@@ -1,4 +1,4 @@
-# Use Python 3.12 slim image (lightweight)
+# Use Python 3.12 slim image
 FROM python:3.12-slim
 
 # Set working directory
@@ -13,14 +13,14 @@ RUN apt-get update && apt-get install -y \
 # Install Poetry
 RUN pip install poetry==1.8.3
 
-# Copy dependency files first (for better caching)
-COPY pyproject.toml poetry.lock ./
+# Copy only pyproject.toml (no poetry.lock)
+COPY pyproject.toml ./
 
-# Configure Poetry to not create a virtual environment
+# Configure Poetry
 RUN poetry config virtualenvs.create false
 
 # Install dependencies
-RUN poetry install --no-root --no-interaction --no-ansi
+RUN poetry install --no-interaction --no-ansi
 
 # Copy the rest of the application
 COPY . .
