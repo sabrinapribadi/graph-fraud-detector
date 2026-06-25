@@ -33,6 +33,9 @@ langgraph = "^1.2.6"
 folium = "^0.20.0"
 streamlit-option-menu = "^0.4.0"
 streamlit-extras = "^1.6.0"
+fastapi = "^0.115.0"          
+uvicorn = "^0.30.0"           
+python-multipart = "^0.0.9"  
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.5.1"
