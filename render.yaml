@@ -4,6 +4,7 @@ services:
   - type: web
     name: graph-fraud-detector-api
     runtime: python
+    pythonVersion: "3.12.3"  # Add this line
     repo: https://github.com/sabrinapribadi/graph-fraud-detector
     plan: free
     region: singapore  # Closest to you
