@@ -2,7 +2,6 @@
 .gitignore
 README.md
 *.md
-data/raw/
 *.csv
 *.zip
 *.pkl
