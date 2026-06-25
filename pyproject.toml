@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = "^3.12"
 pandas = "^3.0.3"
 numpy = "^2.5.0"
 matplotlib = "^3.11.0"
