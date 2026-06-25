@@ -19,16 +19,17 @@ venv.bak/
 .env.local
 .env.*.local
 
-# Data files (large)
+# Data files
+# Raw CSVs are too large for git — use parquet pipeline instead
+# Run: python scripts/preprocess_data.py   to generate data/processed/*.parquet
 data/raw/
-data/processed/
-*.csv
+data/chroma_fraud/
 *.pkl
-*.parquet
 *.zip
 *.tar.gz
 *.7z
 *.rar
+# data/processed/*.parquet IS committed directly (zstd, ~86 MB total — no LFS needed)
 
 # Outputs
 outputs/

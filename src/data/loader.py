@@ -1,5 +1,9 @@
 """
 Data loader for Elliptic Bitcoin Fraud Dataset
+
+Fast path: loads from data/processed/*.parquet (zstd, ~86 MB total).
+Slow path: falls back to raw CSVs and auto-saves a parquet cache for next run.
+Generate parquet files once with:  python scripts/preprocess_data.py
 """
 import pandas as pd
 import numpy as np
@@ -12,9 +16,15 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_PROCESSED = Path("data/processed")
+_FEAT_PQ   = _PROCESSED / "features.parquet"
+_CLS_PQ    = _PROCESSED / "classes.parquet"
+_EDGE_PQ   = _PROCESSED / "edgelist.parquet"
+
+
 class EllipticDataLoader:
     """Load and preprocess Elliptic Bitcoin fraud dataset"""
-    
+
     def __init__(self, data_path: str = "data/raw/elliptic_bitcoin_dataset"):
         self.data_path = Path(data_path)
         self.features = None
@@ -25,54 +35,65 @@ class EllipticDataLoader:
         self.node_labels = None
         self.train_mask = None
         self.test_mask = None
-        
+
     def load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Load all three CSV files"""
-        logger.info("Loading Elliptic dataset...")
-        
-        # Features: [node_id, feature_1, ..., feature_165]
+        """Load dataset — parquet cache first, raw CSVs as fallback."""
+        if _FEAT_PQ.exists() and _CLS_PQ.exists() and _EDGE_PQ.exists():
+            logger.info("Loading from parquet cache...")
+            self.features  = pd.read_parquet(_FEAT_PQ)
+            self.classes   = pd.read_parquet(_CLS_PQ)
+            self.edgelist  = pd.read_parquet(_EDGE_PQ)
+            logger.info(f"Loaded {len(self.features):,} nodes, {len(self.edgelist):,} edges")
+            return self.features, self.classes, self.edgelist
+
+        logger.info("Parquet cache not found — loading from raw CSVs (first run is slow)...")
+        self._load_from_csv()
+        self._save_parquet_cache()
+        return self.features, self.classes, self.edgelist
+
+    def _load_from_csv(self) -> None:
+        """Read the three raw CSV files and normalise column names."""
         self.features = pd.read_csv(
             self.data_path / "elliptic_txs_features.csv",
-            header=None
+            header=None,
         )
-        
-        # Classes: [txId, class] where class is '1' (licit), '2' (illicit), or 'unknown'
-        self.classes = pd.read_csv(
-            self.data_path / "elliptic_txs_classes.csv"
-        )
+
+        self.classes = pd.read_csv(self.data_path / "elliptic_txs_classes.csv")
         logger.info(f"Classes value counts:\n{self.classes['class'].value_counts()}")
-        
-        # Edgelist: Check format
+
         self.edgelist = pd.read_csv(
             self.data_path / "elliptic_txs_edgelist.csv",
-            header=None
+            header=None,
         )
-        logger.info(f"Edgelist shape: {self.edgelist.shape}")
-        logger.info(f"Edgelist columns: {self.edgelist.columns.tolist()}")
-        logger.info(f"Edgelist first 5 rows:\n{self.edgelist.head()}")
-        
-        # The edgelist might have: [source, target, timestamp] or just [source, target]
+
         if self.edgelist.shape[1] == 3:
             self.edgelist.columns = ["source", "target", "timestamp"]
         elif self.edgelist.shape[1] == 2:
             self.edgelist.columns = ["source", "target"]
-            self.edgelist["timestamp"] = 0  # Default timestamp
-            logger.info("Edgelist has only 2 columns (no timestamp), using default timestamp=0")
+            self.edgelist["timestamp"] = 0
         else:
             raise ValueError(f"Unexpected edgelist shape: {self.edgelist.shape}")
-        
-        # Ensure all columns are strings for graph construction
+
         self.edgelist["source"] = self.edgelist["source"].astype(str)
         self.edgelist["target"] = self.edgelist["target"].astype(str)
-        
-        # Clean: drop rows with NaN source or target
+
         initial_len = len(self.edgelist)
         self.edgelist = self.edgelist.dropna(subset=["source", "target"])
         if len(self.edgelist) < initial_len:
             logger.warning(f"Dropped {initial_len - len(self.edgelist)} rows with NaN source/target")
-        
+
         logger.info(f"Loaded {len(self.features):,} nodes, {len(self.edgelist):,} edges")
-        return self.features, self.classes, self.edgelist
+
+    def _save_parquet_cache(self) -> None:
+        """Write parquet cache so future loads are fast."""
+        try:
+            _PROCESSED.mkdir(parents=True, exist_ok=True)
+            self.features.to_parquet(_FEAT_PQ,  compression="zstd", index=False)
+            self.classes.to_parquet( _CLS_PQ,   compression="zstd", index=False)
+            self.edgelist.to_parquet(_EDGE_PQ,  compression="zstd", index=False)
+            logger.info(f"Parquet cache saved to {_PROCESSED}")
+        except Exception as exc:
+            logger.warning(f"Could not write parquet cache: {exc}")
     
     def preprocess_features(self) -> np.ndarray:
         """Extract and normalize node features"""
@@ -247,14 +268,14 @@ if __name__ == "__main__":
     loader.prepare_labels()
     G = loader.build_graph()
     
-    print(f"\n✅ Graph built successfully!")
+    print(f"\nGraph built successfully.")
     print(f"  - Nodes: {G.number_of_nodes():,}")
     print(f"  - Edges: {G.number_of_edges():,}")
     print(f"  - Isolated nodes: {nx.number_of_isolates(G):,}")
-    
+
     # Print some stats
     stats = loader.get_graph_stats()
-    print(f"\n📊 Graph Statistics:")
+    print(f"\nGraph Statistics:")
     for key, value in stats.items():
         if isinstance(value, float):
             print(f"  - {key}: {value:.4f}")
