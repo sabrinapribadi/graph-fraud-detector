@@ -1,0 +1,37 @@
+# Dockerfile.api - For FastAPI Service
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN pip install poetry==1.8.3
+
+# Copy only pyproject.toml
+COPY pyproject.toml ./
+
+# Configure Poetry
+RUN poetry config virtualenvs.create false
+
+# Install dependencies
+RUN poetry install --no-interaction --no-ansi
+
+# Copy the rest of the application
+COPY . .
+
+# Set Python path
+ENV PYTHONPATH=/app/src
+
+# Set environment variables
+ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+
+# Expose the port
+EXPOSE 8000
+
+# Run the API
+CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
