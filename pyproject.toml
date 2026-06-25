@@ -4,10 +4,11 @@ version = "0.1.0"
 description = "Graph Neural Network for Fraud Detection with Quantitative Risk Analysis"
 authors = ["Sabrina"]
 readme = "README.md"
-packages = [{include = "src"}]
+package-mode = false
+
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.12,<3.13"
 pandas = "^3.0.3"
 numpy = "^2.5.0"
 matplotlib = "^3.11.0"
