@@ -1,0 +1,44 @@
+# render.yaml - Complete deployment configuration
+services:
+  # FastAPI Service
+  - type: web
+    name: graph-fraud-detector-api
+    runtime: python
+    repo: https://github.com/sabrinapribadi/graph-fraud-detector
+    plan: free
+    region: singapore  # Closest to you
+    buildCommand: |
+      pip install poetry
+      poetry config virtualenvs.create false
+      poetry install --no-root --no-interaction --no-ansi
+    startCommand: |
+      cd src/api
+      uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: OPENAI_API_KEY
+        sync: false  # You'll set this manually
+      - key: PYTORCH_MPS_HIGH_WATERMARK_RATIO
+        value: 0.0
+    healthCheckPath: /health
+    
+  # Streamlit Dashboard
+  - type: web
+    name: graph-fraud-detector-dashboard
+    runtime: python
+    repo: https://github.com/sabrinapribadi/graph-fraud-detector
+    plan: free
+    region: singapore
+    buildCommand: |
+      pip install poetry
+      poetry config virtualenvs.create false
+      poetry install --no-root --no-interaction --no-ansi
+    startCommand: |
+      streamlit run src/ui/dashboard.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /_stcore/health
