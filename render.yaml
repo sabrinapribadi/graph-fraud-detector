@@ -21,6 +21,8 @@ services:
         sync: false  # You'll set this manually
       - key: PYTORCH_MPS_HIGH_WATERMARK_RATIO
         value: 0.0
+      - key: PYTHON_VERSION
+        value: 3.12.3
     healthCheckPath: /health
     
   # Streamlit Dashboard
