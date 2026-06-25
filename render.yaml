@@ -4,33 +4,29 @@ services:
   - type: web
     name: graph-fraud-detector-api
     runtime: python
-    pythonVersion: "3.12.3"  # Add this line
-    repo: https://github.com/sabrinapribadi/graph-fraud-detector
+    pythonVersion: "3.12.3"
     plan: free
-    region: singapore  # Closest to you
+    region: singapore
     buildCommand: |
       pip install poetry
       poetry config virtualenvs.create false
       poetry install --no-root --no-interaction --no-ansi
     startCommand: |
-      cd src/api
-      uvicorn app:app --host 0.0.0.0 --port $PORT
+      cd src/api && uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHONPATH
         value: /opt/render/project/src
       - key: OPENAI_API_KEY
-        sync: false  # You'll set this manually
+        sync: false
       - key: PYTORCH_MPS_HIGH_WATERMARK_RATIO
         value: 0.0
-      - key: PYTHON_VERSION
-        value: 3.12.3
     healthCheckPath: /health
     
   # Streamlit Dashboard
   - type: web
     name: graph-fraud-detector-dashboard
     runtime: python
-    repo: https://github.com/sabrinapribadi/graph-fraud-detector
+    pythonVersion: "3.12.3"  # ← ADD THIS (was missing!)
     plan: free
     region: singapore
     buildCommand: |
@@ -44,4 +40,12 @@ services:
         value: /opt/render/project/src
       - key: OPENAI_API_KEY
         sync: false
+      - key: PYTORCH_MPS_HIGH_WATERMARK_RATIO
+        value: 0.0
+      - key: STREAMLIT_SERVER_MAX_UPLOAD_SIZE
+        value: 200
+      - key: STREAMLIT_SERVER_ENABLE_CORS
+        value: false
+      - key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+        value: false
     healthCheckPath: /_stcore/health
