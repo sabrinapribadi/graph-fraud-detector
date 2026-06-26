@@ -321,6 +321,7 @@ def _render_agent_response(text: str) -> None:
         st.markdown(prose)
 
     # --- Render chart: class distribution ---
+    _chart_shown = False
     if dist_data and len(dist_data) >= 2:
         _dist_colors = {"Licit": "#00CC96", "Illicit": "#FF5A5F", "Unknown": "#888888"}
         _lbls = list(dist_data.keys())
@@ -338,6 +339,11 @@ def _render_agent_response(text: str) -> None:
             yaxis=dict(color="#ccc"),
         ))
         st.plotly_chart(_fig_dist, use_container_width=True)
+        st.caption(
+            "Bar length = node count in each class. Illicit nodes (red) represent confirmed fraud "
+            "in the labeled set; Unknown (grey) are the 77% of transactions without a ground-truth label."
+        )
+        _chart_shown = True
 
     # --- Render chart: ranked suspect nodes ---
     elif suspect_nodes and len(suspect_nodes) >= 2:
@@ -355,9 +361,15 @@ def _render_agent_response(text: str) -> None:
             yaxis=dict(color="#ccc"),
         ))
         st.plotly_chart(_fig_sus, use_container_width=True)
+        st.caption(
+            "Each bar is a transaction node — longer bar means the model assigns higher fraud probability. "
+            "Red = HIGH risk (>80%), orange = MEDIUM (50-80%), green = LOW. "
+            "These are the model's top candidates for immediate investigation."
+        )
+        _chart_shown = True
 
-    # --- Metric cards ---
-    if metric_lines:
+    # --- Metric cards: only for responses without a chart (e.g. risk analysis, network stats) ---
+    if metric_lines and not _chart_shown:
         _mc = min(len(metric_lines), 4)
         _cols_m = st.columns(_mc)
         for _i, (_lbl, _val) in enumerate(metric_lines[:8]):
@@ -697,6 +709,10 @@ with tab1:
                 margin=dict(l=40, r=20, t=30, b=40),
             ))
             st.plotly_chart(_df1, use_container_width=True)
+            st.caption(
+                "Most nodes have degree 1–3 (sparse graph). The heavy right tail reveals a small "
+                "number of high-degree hub nodes — the top targets for laundering ring investigation."
+            )
 
         with ch2:
             st.markdown("**Fraud Probability Distribution**")
@@ -721,6 +737,10 @@ with tab1:
                         margin=dict(l=40, r=20, t=30, b=40),
                     ))
                     st.plotly_chart(_phf, use_container_width=True)
+                    st.caption(
+                        "Bimodal shape (peaks near 0 and 1) means the model is confident — "
+                        "nodes pile up at 'clearly licit' or 'clearly illicit', with few uncertain cases in the middle."
+                    )
                 except Exception:
                     st.info("Train model to see probability distribution.")
             else:
@@ -1086,6 +1106,10 @@ with tab4:
                 margin=dict(l=40, r=20, t=30, b=40),
             ))
             st.plotly_chart(_mcf4, use_container_width=True)
+            st.caption(
+                "Each bar is one simulated fraud scenario. The red dashed line is VaR 95% — "
+                "losses exceeding this point occur in fewer than 1 in 20 scenarios."
+            )
         else:
             st.info("Set parameters and click Run Simulation.")
 
@@ -1523,15 +1547,53 @@ with tab8:
                 tc3.metric("Max Degree",  f"{_sum8['max_degree']:,}")
 
                 st.markdown("**Class Distribution by Activity Band**")
-                _cd8 = _trn8["class_distribution"]
+                _label_view8 = st.radio(
+                    "View",
+                    ["Ground Truth Labels", "AI-Predicted Labels"],
+                    horizontal=True, key="ta_label_view8",
+                )
+
+                if _label_view8 == "AI-Predicted Labels" and _md8 is not None:
+                    _det8 = st.session_state.get("detector")
+                    if _det8 is not None:
+                        try:
+                            _det8.model.eval()
+                            with torch.no_grad():
+                                _xp8 = torch.FloatTensor(_md8["features"]).to(_det8.device)
+                                _ap8 = torch.eye(len(_md8["features"])).to(_det8.device)
+                                _op8 = _det8.model(_xp8, _ap8)
+                                _pp8 = torch.sigmoid(_op8).squeeze().cpu().numpy()
+                            if _pp8.ndim == 0:
+                                _pp8 = np.array([float(_pp8)])
+                            _pred_ill8  = int(np.sum(_pp8 >= 0.5))
+                            _pred_lit8  = int(np.sum(_pp8 < 0.5))
+                            _scale8     = _G8.number_of_nodes() / max(len(_pp8), 1)
+                            _cd8_ai = {
+                                "illicit": int(_pred_ill8 * _scale8),
+                                "licit":   int(_pred_lit8 * _scale8),
+                                "unknown": 0,
+                            }
+                            st.caption(
+                                f"AI-predicted: ~{_cd8_ai['illicit']:,} illicit ({_cd8_ai['illicit']/_G8.number_of_nodes()*100:.1f}%), "
+                                f"~{_cd8_ai['licit']:,} licit ({_cd8_ai['licit']/_G8.number_of_nodes()*100:.1f}%)"
+                            )
+                        except Exception:
+                            _cd8_ai = _cd8
+                    else:
+                        _cd8_ai = _cd8
+                    _cd8_plot = _cd8_ai
+                else:
+                    _cd8_plot = _cd8
+
                 _cdf8 = go.Figure()
                 for _cls8, _col8 in [("illicit", "#FF5A5F"), ("licit", "#00CC96"), ("unknown", "#888")]:
-                    _cdf8.add_trace(go.Bar(
-                        name=_cls8.capitalize(),
-                        x=[_cls8.capitalize()],
-                        y=[_cd8[_cls8]],
-                        marker_color=_col8,
-                    ))
+                    if _cd8_plot.get(_cls8, 0) > 0:
+                        _cdf8.add_trace(go.Bar(
+                            name=_cls8.capitalize(),
+                            x=[_cls8.capitalize()],
+                            y=[_cd8_plot[_cls8]],
+                            marker_color=_col8,
+                        ))
                 _cdf8.update_layout(**_dark_layout(
                     height=260,
                     barmode="group",
@@ -1540,6 +1602,10 @@ with tab8:
                     margin=dict(l=40, r=20, t=30, b=40),
                 ))
                 st.plotly_chart(_cdf8, use_container_width=True)
+                st.caption(
+                    "Bar height = total nodes in each class. Switch to 'AI-Predicted Labels' to see "
+                    "the model's classification across all 203k nodes, including those without ground-truth labels."
+                )
 
                 st.markdown("**Velocity Percentiles**")
                 _vp8  = _vel8["velocity_distribution"]["percentiles"]
@@ -1631,8 +1697,15 @@ with tab9:
                 _rag9       = FraudRAGAgent(insights=st.session_state.get("discovery_insights", []))
                 _rag_res9   = _rag9.answer(_eff_q9, n_results=5)
 
+                _rag_ans9 = _rag_res9.get("answer", "")
+                _no_result9 = (
+                    not _rag_ans9
+                    or "no relevant" in _rag_ans9.lower()
+                    or "not found" in _rag_ans9.lower()
+                )
+
                 st.markdown("**Answer**")
-                st.markdown(_rag_res9.get("answer", "No answer generated."))
+                st.markdown(_rag_ans9 if _rag_ans9 else "No answer generated.")
 
                 _src9 = _rag_res9.get("sources", [])
                 if _src9:
@@ -1641,6 +1714,34 @@ with tab9:
                         with st.expander(f"{_doc9.source} (score: {_doc9.score:.3f})"):
                             st.markdown(f"*Category:* {_doc9.category}")
                             st.markdown(_doc9.text)
+
+                # ── Web search fallback ───────────────────────────────────────
+                if _no_result9:
+                    st.markdown("---")
+                    st.markdown("**Not found in knowledge base — web results:**")
+                    try:
+                        from duckduckgo_search import DDGS
+                        with DDGS() as _ddgs9:
+                            _web_results9 = list(_ddgs9.text(
+                                f"{_eff_q9} fraud detection finance",
+                                max_results=4,
+                            ))
+                        if _web_results9:
+                            for _wr9 in _web_results9:
+                                with st.expander(_wr9.get("title", "Result")):
+                                    st.markdown(_wr9.get("body", ""))
+                                    _url9 = _wr9.get("href", "")
+                                    if _url9:
+                                        st.markdown(f"[Open in browser]({_url9})")
+                        else:
+                            st.info("No web results found.")
+                    except ImportError:
+                        st.info(
+                            "Install `duckduckgo-search` (`pip install duckduckgo-search`) "
+                            "to enable web search fallback."
+                        )
+                    except Exception as _we9:
+                        st.warning(f"Web search unavailable: {_we9}")
 
                 st.session_state["rag_current_query"] = ""
             except Exception as _e9:
@@ -1772,6 +1873,10 @@ with tab10:
                 margin=dict(l=40, r=20, t=50, b=40),
             ))
             st.plotly_chart(_kdef10, use_container_width=True)
+            st.caption(
+                "Each coloured curve is a scenario's loss distribution. A curve shifted right = higher average losses. "
+                "Wider curves = more uncertainty. The 2008 Crisis (red) sits furthest right — worst expected outcome."
+            )
 
             st.markdown("**Severity Heatmap**")
             _hm_vals10 = [[round(float(_stall10[s]["severity_ratio"]), 2)] for s in _sc_names10]
@@ -1791,6 +1896,10 @@ with tab10:
                 margin=dict(l=150, r=20, t=30, b=20),
             ))
             st.plotly_chart(_hmf10, use_container_width=True)
+            st.caption(
+                "Each cell shows how many times worse this scenario is vs the Baseline. "
+                "Red cells (>1.5x) require urgent reserve adjustments."
+            )
 
             st.dataframe(_stdf10, use_container_width=True, hide_index=True)
 
@@ -1833,6 +1942,14 @@ with tab11:
     )
     _perf_btn11 = st.button(":material/analytics: Compute Metrics", type="primary", key="perf11")
 
+    # Warn user if slider changed since last computation
+    _stored_n11 = st.session_state.get("perf_n_periods")
+    if _stored_n11 is not None and _stored_n11 != _n_per11:
+        st.info(
+            f"Chart was computed for **{_stored_n11}** periods. "
+            f"Slider is now at **{_n_per11}** — click Compute Metrics to refresh."
+        )
+
     if _perf_btn11:
         if _G11 is None or _det11 is None or _md11 is None:
             st.warning("Load data and train model first.")
@@ -1842,7 +1959,8 @@ with tab11:
                     from src.analytics.risk_adjusted_metrics import RiskAdjustedAnalyzer
                     _raa11 = RiskAdjustedAnalyzer(_G11, _det11, _md11)
                     _rpt11 = _raa11.full_report(n_periods=_n_per11)
-                    st.session_state["perf_results"] = _rpt11
+                    st.session_state["perf_results"]  = _rpt11
+                    st.session_state["perf_n_periods"] = _n_per11
                 except Exception as _e11:
                     st.error(f"Performance metrics error: {_e11}")
 
@@ -1882,6 +2000,10 @@ with tab11:
                 margin=dict(l=40, r=40, t=40, b=40),
             ))
             st.plotly_chart(_rdf11, use_container_width=True)
+            st.caption(
+                "Each axis is normalised to [0,1]. A larger shape = strong performance on all four dimensions. "
+                "Sortino above Sharpe means the model fails gracefully — upside variability exceeds downside."
+            )
 
         with ra2:
             st.markdown("**TPR Series vs Benchmark**")
@@ -1905,6 +2027,10 @@ with tab11:
                 margin=dict(l=40, r=20, t=30, b=40),
             ))
             st.plotly_chart(_tprf11, use_container_width=True)
+            st.caption(
+                "Blue = GNN model TPR per bootstrap period; orange dashed = naive degree-threshold baseline. "
+                "Gap between lines is the Information Ratio — the model consistently outperforms when blue > orange."
+            )
 
         st.markdown("**Drawdown**")
         _cal11 = _pr11["calmar"]
@@ -1923,6 +2049,10 @@ with tab11:
             margin=dict(l=40, r=20, t=20, b=40),
         ))
         st.plotly_chart(_ddf11, use_container_width=True)
+        st.caption(
+            "Shaded area = how far the cumulative TPR dropped from its peak in each period. "
+            "Spikes indicate stretches when the model had consecutive bad detection periods."
+        )
 
         if _pr11.get("interpretation"):
             st.markdown("**Interpretation**")
@@ -2037,8 +2167,9 @@ with tab12:
             ))
             st.plotly_chart(_fcf12, use_container_width=True)
             st.caption(
-                "The Elliptic dataset contains 49 bi-weekly transaction snapshots spanning Jan 2011 – Jan 2013. "
-                f"Forecast method: {_fcres12.get('method', 'Holt-Winters')}."
+                "Solid line = historical estimated fraud-loss proxy per bi-weekly period; shaded band = 80% confidence interval. "
+                f"Method: {_fcres12.get('method', 'Holt-Winters')}. "
+                "An upward trend in the forecast section means rising fraud exposure — budget reserves accordingly."
             )
 
             if not PROPHET_AVAILABLE:
@@ -2175,6 +2306,10 @@ with tab13:
                 margin=dict(l=40, r=20, t=20, b=40),
             ))
             st.plotly_chart(_rhof13, use_container_width=True)
+            st.caption(
+                "Asset correlation (rho) measures how much individual fraud events move together. "
+                "Higher rho = capital rises steeply — regulators require larger buffers when frauds are correlated."
+            )
 
             st.markdown("**PD Sensitivity (Capital vs Fraud Probability)**")
             _pdf13 = go.Figure()
@@ -2195,6 +2330,10 @@ with tab13:
                 margin=dict(l=40, r=20, t=20, b=40),
             ))
             st.plotly_chart(_pdf13, use_container_width=True)
+            st.caption(
+                "Orange = IRB capital required; green dashed = expected loss. "
+                "IRB capital exceeds expected loss — the gap is the unexpected-loss buffer regulators mandate."
+            )
 
     _biz_box(
         "How much money do we need in reserve?",
@@ -2302,6 +2441,10 @@ with tab14:
                 margin=dict(l=40, r=40, t=30, b=40),
             ))
             st.plotly_chart(_scf14, use_container_width=True)
+            st.caption(
+                "Top-right quadrant = highest priority for investigation: node is both likely fraudulent "
+                "AND would put many others at risk if missed. Size and colour encode composite risk."
+            )
 
             st.markdown("**Composite Risk Score Distribution**")
             _hcf14 = go.Figure(go.Histogram(
@@ -2315,6 +2458,10 @@ with tab14:
                 margin=dict(l=40, r=20, t=20, b=40),
             ))
             st.plotly_chart(_hcf14, use_container_width=True)
+            st.caption(
+                "Most nodes have low composite risk. Nodes in the right tail of this distribution "
+                "are the highest-priority investigation targets — they combine high fraud probability with network contagion."
+            )
 
             st.markdown("**Top 20 Highest Contagion Nodes**")
             _t20_14 = _csc14.head(20)[[

@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.3 (Network AI Labels, Hyperparameter Apply, Aggregator Explainer, Emoji Cleanup, Chart Agent)
+Version: 3.4 (Web Search Fallback, Chart Captions, AI Label Temporal, Stale Metrics Warning, Prophet)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -264,6 +264,22 @@ Module H: Streamlit Dashboard (14-tab)
      temporal_analysis.py, gnn_model.py, model_explainability.py) purged of emoji in print
      statements, return strings, report text, and Insight titles. Dashboard uses Material icons
      and HTML SVG throughout.
+- H.19 Knowledge Base web search fallback: when RAG returns "no relevant documents", the tab
+     automatically queries DuckDuckGo (free, no API key via duckduckgo-search library) and shows
+     top-4 snippets with expander cards and source links. Falls back gracefully if library absent.
+- H.20 Chart captions: st.caption() added under every major chart that lacked contextual guidance —
+     Overview (degree histogram, fraud prob histogram), Risk Analysis (Monte Carlo), Temporal
+     (class distribution), Stress Test (KDE overlay, severity heatmap), Performance (radar, TPR
+     series, drawdown), Forecast, Regulatory Capital (rho sensitivity, PD sensitivity), Contagion
+     (scatter, composite risk histogram). Single-sentence "what to look for and what it implies".
+- H.21 Temporal Analysis AI-Predicted Labels toggle: radio button above the class distribution
+     chart lets the user switch between "Ground Truth Labels" and "AI-Predicted Labels". The
+     AI view runs model inference on the training sample and scales the counts to the full 203k
+     graph, giving a side-by-side comparison with ground truth.
+- H.22 Performance tab stale-data warning: stores the n_periods used in perf_n_periods session
+     state; shows an info callout when the slider value differs from the stored value, prompting
+     the user to click Compute Metrics to refresh.
+- H.23 Prophet added to pyproject.toml (>=1.1). duckduckgo-search (>=6.0) also added.
 
 Module I: Phase 6 — Advanced Quant Finance
 
@@ -489,7 +505,10 @@ Render Services:
 |        |          | Label probability fixed (per-subgraph inference); AI Chat chart   |           |
 |        |          | rendering (dist/suspect bar charts), agent caching, multi-Q;     |           |
 |        |          | emoji purged from all 5 src files; hyperparameter description col;|           |
-|        |          | GraphSAGE aggregator explainer (mean vs sum vs max table)         |           ||
+|        |          | GraphSAGE aggregator explainer (mean vs sum vs max table)         |           |
+| 17     | 1 day    | UX: chart captions on all major charts; Knowledge Base DuckDuckGo | Completed |
+|        |          | web search fallback; Temporal AI-Predicted Labels toggle;        |           |
+|        |          | Performance stale-data warning; prophet + duckduckgo-search added |           ||
 
 
 10. TESTING STRATEGY
