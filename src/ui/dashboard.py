@@ -2044,30 +2044,28 @@ with tab11:
             ra1, ra2 = st.columns(2)
             with ra1:
                 _sh11  = _pr11["sharpe"]["sharpe_ratio"]
+                _so11  = _pr11["sortino"]["sortino_ratio"]
+                _ir11v = _pr11["information"]["information_ratio"]
                 _ca11  = _pr11["calmar"]["calmar_ratio"]
 
                 st.markdown("**Performance Radar**")
 
-                # Four axes chosen to have genuinely different values:
-                #   Sharpe  — scales with √n (sqrt growth as n increases)
-                #   Calmar  — scales linearly with n (faster growth than Sharpe)
-                #   AUC     — inherent model quality, stable regardless of n
-                #   Detect  — Detection Rate (Recall), stable regardless of n
-                # Sharpe and Calmar are normalised by their n=49 maximum (stored in
-                # perf_range[key][1]), so 1.0 = the value you'd get at n=49.
+                # Each axis normalised by its own n=49 maximum (from perf_range).
+                # Sharpe, Sortino, IR all scale with √n → they move together.
+                # Calmar scales linearly with n → starts lower, closes the gap faster.
+                # At n=49 all axes reach 1.0.  At small n, Calmar is visibly shorter.
                 _rng11 = st.session_state.get("perf_range", {})
-                _sh_max = _rng11.get("sharpe",  [0, max(_sh11, 1e-9)])[1]
-                _ca_max = _rng11.get("calmar",  [0, max(_ca11, 1e-9)])[1]
-                _auc11  = _mtr11.get("auc",    0.0)
-                _dr11   = _mtr11.get("recall", _pr11["sharpe"]["mean_tpr"])
+                def _by_max(v, key):
+                    mx = _rng11.get(key, [0, max(v, 1e-9)])[1]
+                    return round(min(1.0, v / max(mx, 1e-9)), 4)
 
                 _rv11 = [
-                    round(min(1.0, _sh11 / max(_sh_max, 1e-9)), 4),  # √n growth
-                    round(min(1.0, _ca11 / max(_ca_max, 1e-9)), 4),  # linear growth
-                    round(float(_auc11), 4),                           # stable
-                    round(float(_dr11),  4),                           # stable
+                    _by_max(_sh11,  "sharpe"),   # √n/√49
+                    _by_max(_so11,  "sortino"),  # √n/√49 (moves with Sharpe)
+                    _by_max(_ir11v, "ir"),        # √n/√49 (moves with Sharpe)
+                    _by_max(_ca11,  "calmar"),   # n/49  (linear — clearly different)
                 ]
-                _rc11 = ["Sharpe", "Calmar", "AUC", "Detection Rate"]
+                _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
                 _rdf11 = go.Figure(go.Scatterpolar(
                     r=_rv11 + [_rv11[0]], theta=_rc11 + [_rc11[0]],
                     fill="toself", fillcolor=_to_rgba("#4A90D9", 0.25),
@@ -2080,9 +2078,10 @@ with tab11:
                 st.plotly_chart(_rdf11, use_container_width=True)
                 _n_stored = st.session_state.get("perf_n_periods", "?")
                 st.caption(
-                    f"**Sharpe & Calmar** (left/bottom) = ratio at n={_n_stored} ÷ max at n=49 — "
-                    f"these grow as you increase n (Calmar grows faster because it scales linearly). "
-                    f"**AUC & Detection Rate** (right/top) = inherent model quality, fixed regardless of n."
+                    f"Each axis = value at n={_n_stored} ÷ projected max at n=49. "
+                    f"**Sharpe, Sortino & IR** scale with √n — they always move together. "
+                    f"**Calmar** scales linearly with n, so it starts shorter at low n and "
+                    f"closes the gap as you approach n=49."
                 )
 
             with ra2:
