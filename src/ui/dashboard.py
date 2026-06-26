@@ -1975,8 +1975,11 @@ with tab11:
                     from src.analytics.risk_adjusted_metrics import RiskAdjustedAnalyzer
                     _raa11 = RiskAdjustedAnalyzer(_G11, _det11, _md11)
                     _rpt11 = _raa11.full_report(n_periods=_n_per11)
-                    st.session_state["perf_results"]  = _rpt11
+                    st.session_state["perf_results"]   = _rpt11
                     st.session_state["perf_n_periods"] = _n_per11
+                    # Store raw TPR series for the radar (natural [0,1] axes)
+                    st.session_state["perf_tpr_series"]   = _raa11._returns.tolist() if _raa11._returns is not None else []
+                    st.session_state["perf_bench_series"] = _raa11._benchmark_returns.tolist() if _raa11._benchmark_returns is not None else []
                 except Exception as _e11:
                     st.error(f"Performance metrics error: {_e11}")
 
@@ -1995,17 +1998,25 @@ with tab11:
         ra1, ra2 = st.columns(2)
         with ra1:
             st.markdown("**Performance Radar**")
-            # Normalise relative to the largest ratio so the shape shows
-            # which metric is proportionally strongest for this n_periods run
-            _raw11 = [
-                max(_pr11["sharpe"]["sharpe_ratio"],      0),
-                max(_pr11["sortino"]["sortino_ratio"],     0),
-                max(_pr11["information"]["information_ratio"], 0),
-                max(_pr11["calmar"]["calmar_ratio"],       0),
-            ]
-            _rmax11 = max(_raw11) or 1.0
-            _rv11 = [v / _rmax11 for v in _raw11]
-            _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
+            # Use natural [0,1] axes derived from the raw TPR series so the
+            # shape actually changes when n_periods changes (ratio axes don't
+            # change because Sharpe/Sortino/IR/Calmar all scale with √n)
+            _tpr_s11   = np.array(st.session_state.get("perf_tpr_series",   []))
+            _bench_s11 = np.array(st.session_state.get("perf_bench_series", []))
+            if len(_tpr_s11) > 0:
+                _tpr_mean11  = float(_tpr_s11.mean())
+                _tpr_std11   = float(_tpr_s11.std(ddof=1)) if len(_tpr_s11) > 1 else 0.02
+                _tpr_floor11 = float(_tpr_s11.min())
+                _bench_m11   = float(_bench_s11.mean()) if len(_bench_s11) > 0 else 0.25
+                _rv11 = [
+                    round(_tpr_mean11, 4),
+                    round(max(0.0, 1.0 - _tpr_std11 * 15), 4),
+                    round(_tpr_floor11, 4),
+                    round(min(1.0, max(0.0, _tpr_mean11 - _bench_m11)), 4),
+                ]
+            else:
+                _rv11 = [0.5, 0.5, 0.5, 0.5]
+            _rc11 = ["Avg TPR", "Consistency", "Floor", "vs Benchmark"]
             _rdf11 = go.Figure(go.Scatterpolar(
                 r=_rv11 + [_rv11[0]],
                 theta=_rc11 + [_rc11[0]],
@@ -2021,7 +2032,8 @@ with tab11:
             ))
             st.plotly_chart(_rdf11, use_container_width=True)
             st.caption(
-                "Axes show each ratio relative to the strongest one — the shape reveals which metric dominates. "
+                "Avg TPR = mean detection rate; Consistency = 1 − 15×std (higher = stabler); "
+                "Floor = worst single period; vs Benchmark = outperformance over degree-threshold baseline. "
                 "Sortino above Sharpe means the model fails gracefully — upside variability exceeds downside."
             )
 

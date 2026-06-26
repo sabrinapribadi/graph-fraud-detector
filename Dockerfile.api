@@ -21,10 +21,7 @@ RUN poetry config virtualenvs.create false
 # Install dependencies
 RUN poetry install --no-interaction --no-ansi
 
-# Copy the data files
-COPY data/raw/elliptic_bitcoin_dataset/ data/raw/elliptic_bitcoin_dataset/
-
-# Copy the rest of the application
+# Copy the rest of the application (includes data/processed/ parquet files)
 COPY . .
 
 # Set Python path

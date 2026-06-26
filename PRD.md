@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.5 (Temporal Bug Fix, Web Search Google Fallback, Radar Relative Normalization)
+Version: 3.6 (Radar Natural Axes, Dockerfile.api Raw-Data Fix)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -286,9 +286,14 @@ Module H: Streamlit Dashboard (14-tab)
 - H.25 Knowledge Base web fallback: DuckDuckGo attempted first; on any failure (ImportError or
      network error) falls back to a Google search link built with urllib.parse.quote — always
      works without an extra library.
-- H.26 Performance radar relative normalisation: axes scaled to max(raw_values) instead of fixed
-     divisors (3/5/2/10), so the shape shows which metric dominates and changes meaningfully
-     across different n_periods runs. Caption updated.
+- H.26 Performance radar natural axes: Sharpe/Sortino/IR/Calmar all scale with √n_periods so
+     their relative proportions never change and the shape was always identical. Replaced with
+     4 natural [0,1] axes from the raw TPR series: Avg TPR, Consistency (1−15×std), Floor
+     (worst period TPR), vs Benchmark (outperformance). Raw series stored in session_state
+     alongside full_report() result. Shape now changes visibly across n_periods runs.
+- H.27 Dockerfile.api COPY raw data removed: line 25 (`COPY data/raw/elliptic_bitcoin_dataset/`)
+     caused build failure on Render because raw CSVs are not committed. `COPY . .` on the
+     following line already includes data/processed/ parquet files; raw line deleted.
 
 Module I: Phase 6 — Advanced Quant Finance
 
@@ -521,6 +526,8 @@ Render Services:
 | 18     | 1 day    | Bug fixes: Temporal _cd8 NameError (session_state persistence);   | Completed |
 |        |          | Knowledge Base Google link fallback when DuckDuckGo unavailable; |           |
 |        |          | Performance radar relative normalisation (shape now varies)       |           |
+| 19     | 1 day    | Radar natural axes (Avg TPR/Consistency/Floor/vs Benchmark);      | Completed |
+|        |          | Dockerfile.api COPY raw data line removed (Render build fix)      |           |
 
 
 10. TESTING STRATEGY
