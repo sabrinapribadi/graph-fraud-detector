@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.9 (Finance Radar Min-Max Normalisation)
+Version: 4.0 (Finance Radar Analytical Range, Business Quality Cards)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -550,6 +550,11 @@ Render Services:
 |        |          | DS view: TPR histogram + active return distribution               |           |
 | 22     | 0.5 days | Finance radar min-max normalisation: axis = current / max_ever;   | Completed |
 |        |          | running max stored in perf_max_ever; Reset baseline button        |           |
+| 23     | 1 day    | Finance radar analytical range [n=10, n=49]: derived from single  | Completed |
+|        |          | run via sqrt-n scaling (no extra inference calls; no reset button)|           |
+|        |          | Finance view row 2: Fraud Catch Rate / Alert Accuracy / Ranking   |           |
+|        |          | Confidence / F1 from stored model_metrics (business language);    |           |
+|        |          | model_metrics now stored on startup and on Apply retraining       |           |
 
 
 10. TESTING STRATEGY
