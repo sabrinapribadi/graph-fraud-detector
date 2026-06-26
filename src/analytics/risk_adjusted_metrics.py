@@ -209,20 +209,37 @@ class RiskAdjustedAnalyzer:
         cal = self.calmar_ratio(n_periods)
 
         interpretation = []
-        if sh["sharpe_ratio"] > 1.0:
-            interpretation.append("Sharpe > 1: detection return well compensates for volatility.")
-        elif sh["sharpe_ratio"] > 0:
-            interpretation.append("Sharpe 0-1: modest risk-adjusted detection performance.")
-        else:
-            interpretation.append("Sharpe < 0: detection volatility exceeds excess return.")
+        sh_v  = sh["sharpe_ratio"]
+        so_v  = so["sortino_ratio"]
+        ir_v  = ir["information_ratio"]
+        ca_v  = cal["calmar_ratio"]
+        mdd_v = cal["max_drawdown"]
 
-        if so["sortino_ratio"] > sh["sharpe_ratio"]:
-            interpretation.append("Sortino > Sharpe: upside variability is larger than downside — favourable.")
+        if sh_v > 1.0:
+            interpretation.append(f"Sharpe {sh_v:.2f} > 1: detection return well compensates for TPR volatility.")
+        elif sh_v > 0:
+            interpretation.append(f"Sharpe {sh_v:.2f} (0–1): modest risk-adjusted performance — increase n_periods to improve.")
         else:
-            interpretation.append("Sortino <= Sharpe: false-negative variance is a material downside risk.")
+            interpretation.append(f"Sharpe {sh_v:.2f} < 0: detection volatility exceeds excess return over risk-free.")
 
-        if ir["information_ratio"] > 0.5:
-            interpretation.append("IR > 0.5: model consistently outperforms the degree-threshold benchmark.")
+        if so_v > sh_v:
+            interpretation.append(f"Sortino {so_v:.2f} > Sharpe: upside (good-detection) variability exceeds downside — favourable asymmetry.")
+        else:
+            interpretation.append(f"Sortino {so_v:.2f} ≤ Sharpe: false-negative variance is material — downside risk dominates.")
+
+        if ir_v > 0.5:
+            interpretation.append(f"IR {ir_v:.2f} > 0.5: model consistently outperforms the degree-threshold benchmark.")
+        elif ir_v > 0:
+            interpretation.append(f"IR {ir_v:.2f} (0–0.5): marginal edge over naive benchmark — consider feature engineering.")
+        else:
+            interpretation.append(f"IR {ir_v:.2f} ≤ 0: model does not beat the degree-threshold baseline at this n.")
+
+        if ca_v > 2.0:
+            interpretation.append(f"Calmar {ca_v:.2f} > 2: strong recovery — annualised return is {ca_v:.1f}× the max drawdown ({mdd_v:.1%}).")
+        elif ca_v > 0.5:
+            interpretation.append(f"Calmar {ca_v:.2f}: recovery adequate — max drawdown {mdd_v:.1%} is manageable.")
+        else:
+            interpretation.append(f"Calmar {ca_v:.2f}: poor recovery — max drawdown {mdd_v:.1%} dominates annualised return.")
 
         return {
             "sharpe":          sh,
