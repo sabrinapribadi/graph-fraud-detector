@@ -10,7 +10,7 @@ REST service — designed so non-finance users can interpret every result in pla
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com)
-
+![alt text](image.png)
 ## Live Services
 
 | Service | URL | Status |
@@ -26,12 +26,12 @@ REST service — designed so non-finance users can interpret every result in pla
 | Dashboard Tab | Business Question | What it does |
 |--------------|-------------------|-------------|
 | **Overview** | Are we catching the fraudsters? | AUC, fraud rate, dual donut (ground-truth labels + model-predicted classification for all 203k nodes), degree histogram, fraud probability histogram, top suspicious nodes table |
-| **Network Explorer** | Who are the most connected suspects? | Interactive Plotly graph; colour by label, degree, or fraud probability; network topology stats |
-| **AI Assistant** | Can I just ask questions in plain English? | LangChain agent with 6 analytical tools; native chat bubbles + metric card rendering; rule-based fallback works without an API key |
+| **Network Explorer** | Who are the most connected suspects? | Interactive Plotly graph; colour by label, degree, fraud probability, or **AI-Predicted Label** (model inference on subgraph with caution callout); network topology stats |
+| **AI Assistant** | Can I just ask questions in plain English? | LangChain agent with 6 analytical tools; native `st.chat_message()` bubbles + metric card rendering; rule-based fallback works without an API key |
 | **Risk Analysis** | How much money could we lose? | Monte Carlo (10,000 scenarios); Expected Loss (PD × EAD × LGD); VaR 95%; Time Value of Money |
 | **Data Explorer** | Can I filter and export specific transactions? | Filterable node table with label and degree filters; degree distribution chart; CSV export |
 | **Auto-Discovery** | What fraud patterns should I worry about right now? | Proactively detects 5 fraud pattern types with severity badges and Plotly charts |
-| **Advanced ML** | Can the model explain why it flagged a transaction? | Optuna hyperparameter tuning; GAT + GraphSAGE ensemble; gradient-based feature attribution shown as horizontal bar chart (red = raises risk, blue = lowers) |
+| **Advanced ML** | Can the model explain why it flagged a transaction? | Optuna hyperparameter tuning + **Apply button to retrain with best params**; GAT + GraphSAGE ensemble; gradient-based attribution as horizontal bar chart (red = raises risk, blue = lowers) |
 | **Temporal Analysis** | Is fraud getting worse over time? | Class distribution, velocity percentiles, z-score anomaly table, downloadable report |
 | **Knowledge Base** | Can I look up a fraud term or concept? | RAG search over 25 curated documents; ChromaDB + OpenAI with TF-IDF fallback; source cards |
 
