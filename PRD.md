@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.2 (Network AI Labels, Hyperparameter Apply, Git History Restore)
+Version: 3.3 (Network AI Labels, Hyperparameter Apply, Aggregator Explainer, Emoji Cleanup, Chart Agent)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -244,6 +244,26 @@ Module H: Streamlit Dashboard (14-tab)
      Optimised Parameters" button retrains the model with the best hidden_dim, num_layers,
      dropout and lr found, updates session_state.detector, and shows new AUC. This closes the
      loop — users previously got best params displayed but had no way to act on them in-app.
+     Parameter table includes a "Description" column explaining each hyperparameter's role.
+     Context box below the table explains that "Apply" replaces the active model across all
+     14 tabs (Network Explorer, AI Chat, Risk Analysis, Explainability, Forecast, Contagion).
+- H.15 Advanced ML → Ensemble Model: expander "What is the difference between mean and sum
+     aggregation?" explains GraphSAGE aggregators in a Markdown table with three rows (mean,
+     sum, max) covering how each works, what it is best for, and its implication for fraud
+     detection in the Elliptic graph (high-degree hub amplification with sum vs. normalised
+     stability with mean).
+- H.16 Network Explorer AI-Predicted Label: fixed node probability inference — model now runs
+     on the displayed subgraph nodes' own features (fetched from graph node attributes) instead
+     of the 2,000-node training sample. Previously all non-training nodes fell back to 0.21.
+- H.17 AI Chat: _render_agent_response() upgraded — detects class-distribution sections
+     (Licit/Illicit/Unknown: count (pct%)) and renders a horizontal Plotly bar chart; detects
+     ranked suspect lists and renders a fraud-probability bar chart. Agent instance cached in
+     st.session_state["_fraud_agent"] and reused across questions (avoids re-initialising on
+     every message). Multiple questions supported: separate them with semicolons in the input.
+- H.18 Emoji removal: all Python source files (fraud_agent.py, auto_discovery.py,
+     temporal_analysis.py, gnn_model.py, model_explainability.py) purged of emoji in print
+     statements, return strings, report text, and Insight titles. Dashboard uses Material icons
+     and HTML SVG throughout.
 
 Module I: Phase 6 — Advanced Quant Finance
 
@@ -465,6 +485,11 @@ Render Services:
 |        |          | Capital max_value fix; KDE fillcolor rgba fix; KB auto-search;   |           |
 |        |          | Network Explorer AI-Predicted Label option with caution callout;  |           |
 |        |          | Hyperparameter Apply button to retrain model with optimised params |           |
+| 16     | 1 day    | Professionalism + explainability polish: Network AI-Predicted     | Completed |
+|        |          | Label probability fixed (per-subgraph inference); AI Chat chart   |           |
+|        |          | rendering (dist/suspect bar charts), agent caching, multi-Q;     |           |
+|        |          | emoji purged from all 5 src files; hyperparameter description col;|           |
+|        |          | GraphSAGE aggregator explainer (mean vs sum vs max table)         |           ||
 
 
 10. TESTING STRATEGY

@@ -189,7 +189,7 @@ class ModelExplainer:
         shap_exp = self._shap_explanation(features)
         
         report = f"""
-🔍 EXPLANATION REPORT FOR NODE {node_id}
+EXPLANATION REPORT FOR NODE {node_id}
 =========================================
 
 Prediction: {shap_exp.get('prediction', 'N/A'):.2%}
@@ -200,6 +200,6 @@ Top Influential Features:
             report += f"  {i}. {feat['name']}: {feat['value']:.4f} (importance: {feat['importance']:.4f})\n"
         
         if 'error' in shap_exp:
-            report += f"\n⚠️  Note: {shap_exp['error']}"
+            report += f"\nNote: {shap_exp['error']}"
         
         return report

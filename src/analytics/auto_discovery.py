@@ -89,7 +89,7 @@ class AutoDiscovery:
             top_rings = rings[:5]
             
             insight = Insight(
-                title="💰 Money Laundering Rings Detected",
+                title="Money Laundering Rings Detected",
                 description=f"Found {len(rings)} potential money laundering hubs. Top hub Node {top_rings[0]['node']} has {top_rings[0]['illicit_neighbors']} illicit connections ({top_rings[0]['illicit_ratio']*100:.1f}% of all connections).",
                 category="pattern",
                 severity="HIGH",
@@ -110,7 +110,7 @@ class AutoDiscovery:
             self.insights.append(insight)
         else:
             insight = Insight(
-                title="✅ No Money Laundering Rings Detected",
+                title="No Money Laundering Rings Detected",
                 description="No significant money laundering patterns were found in the current dataset. The network appears to have a low concentration of illicit connections.",
                 category="pattern",
                 severity="LOW",
@@ -161,7 +161,7 @@ class AutoDiscovery:
             display_nodes = structuring_nodes[:min(50, len(structuring_nodes))]
             
             insight = Insight(
-                title="💰 Structuring Patterns Detected",
+                title="Structuring Patterns Detected",
                 description=f"Found {len(structuring_nodes)} transactions with values just below common thresholds. This could indicate structuring (smurfing) behavior.",
                 category="pattern",
                 severity="MEDIUM",
@@ -181,7 +181,7 @@ class AutoDiscovery:
             self.insights.append(insight)
         else:
             insight = Insight(
-                title="✅ No Structuring Patterns Detected",
+                title="No Structuring Patterns Detected",
                 description="No significant structuring patterns were found in the current dataset. Transaction values appear normally distributed.",
                 category="pattern",
                 severity="LOW",
@@ -220,7 +220,7 @@ class AutoDiscovery:
             top_chains = rapid_chains[:5]
             
             insight = Insight(
-                title="⚡ Rapid Transaction Chains Detected",
+                title="Rapid Transaction Chains Detected",
                 description=f"Found {len(rapid_chains)} nodes with high transaction velocity. Top node {top_chains[0]['node']} has {top_chains[0]['degree']} connections with {top_chains[0]['illicit_connections']} illicit connections.",
                 category="pattern",
                 severity="HIGH",
@@ -240,7 +240,7 @@ class AutoDiscovery:
             self.insights.append(insight)
         else:
             insight = Insight(
-                title="✅ No Rapid Chains Detected",
+                title="No Rapid Chains Detected",
                 description="No rapid transaction chains were found in the current dataset. Transaction velocity appears normal.",
                 category="pattern",
                 severity="LOW",
@@ -289,7 +289,7 @@ class AutoDiscovery:
             display_nodes = mixed_nodes[:min(10, len(mixed_nodes))]
             
             insight = Insight(
-                title="🔀 Mixed Signal Nodes Detected",
+                title="Mixed Signal Nodes Detected",
                 description=f"Found {len(mixed_nodes)} nodes with mixed licit/illicit connections. These nodes may represent money laundering gateways or compromised accounts.",
                 category="anomaly",
                 severity="MEDIUM",
@@ -309,7 +309,7 @@ class AutoDiscovery:
             self.insights.append(insight)
         else:
             insight = Insight(
-                title="✅ No Mixed Signals Detected",
+                title="No Mixed Signals Detected",
                 description="No significant mixed signal patterns were found in the current dataset. Nodes appear to have clear licit or illicit connection patterns.",
                 category="anomaly",
                 severity="LOW",
@@ -327,7 +327,7 @@ class AutoDiscovery:
         degrees = [d for n, d in self.G.degree()]
         if not degrees:
             insight = Insight(
-                title="✅ No Outliers Detected",
+                title="No Outliers Detected",
                 description="No nodes found in the graph.",
                 category="anomaly",
                 severity="LOW",
@@ -365,7 +365,7 @@ class AutoDiscovery:
             low_outliers = sum(1 for o in outliers if o['type'] == 'low')
             
             insight = Insight(
-                title="📊 Anomaly Outliers Detected",
+                title="Anomaly Outliers Detected",
                 description=f"Found {len(outliers)} outlier nodes ({high_outliers} high-degree, {low_outliers} low-degree). Top outlier Node {top_outliers[0]['node']} has degree {top_outliers[0]['degree']} (z-score: {top_outliers[0]['z_score']:.2f}).",
                 category="anomaly",
                 severity="HIGH",
@@ -387,7 +387,7 @@ class AutoDiscovery:
             self.insights.append(insight)
         else:
             insight = Insight(
-                title="✅ No Outliers Detected",
+                title="No Outliers Detected",
                 description="No significant outliers were found in the current dataset. The network appears well-distributed.",
                 category="anomaly",
                 severity="LOW",
@@ -405,7 +405,7 @@ class AutoDiscovery:
     
     def generate_report(self) -> str:
         """Generate a text report of all insights"""
-        report = "🔍 AUTO-DISCOVERY REPORT\n"
+        report = "AUTO-DISCOVERY REPORT\n"
         report += "=" * 50 + "\n"
         report += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         report += f"Total Insights: {len(self.insights)}\n"

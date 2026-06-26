@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import networkx as nx
 import torch
+import re
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
@@ -268,24 +269,99 @@ def _plain_english(text: str) -> None:
 
 def _render_agent_response(text: str) -> None:
     import re
+
     lines = text.strip().split("\n")
-    metric_lines = []
-    prose_lines  = []
+
+    # --- 1. Extract class-distribution data (Licit/Illicit/Unknown: N (X%)) ---
+    dist_pat = re.compile(r"(?:Licit|Illicit|Unknown)\s*[:\-]\s*([\d,]+)\s*\(([\d.]+)%\)")
+    dist_data: dict = {}
     for line in lines:
-        m = re.match(r"^([A-Za-z][A-Za-z0-9 /()%_-]{1,35})\s*[:\-]\s*([\\$0-9,. %]+)$", line.strip())
-        if m:
+        for lbl in ("Licit", "Illicit", "Unknown"):
+            if lbl in line:
+                m = dist_pat.search(line)
+                if m:
+                    dist_data[lbl] = {
+                        "count": int(m.group(1).replace(",", "")),
+                        "pct":   float(m.group(2)),
+                    }
+
+    # --- 2. Extract ranked suspect list (Fraud Probability: X%) ---
+    suspect_nodes: list = []
+    suspect_probs: list = []
+    for j, line in enumerate(lines):
+        m_rank = re.match(r"^\s*\d+\.\s+Transaction ID:\s*(\S+)", line)
+        if m_rank and j + 1 < len(lines):
+            m_prob = re.search(r"Fraud Probability:\s*([\d.]+)%", lines[j + 1])
+            if m_prob:
+                nid = m_rank.group(1)
+                suspect_nodes.append(f"...{nid[-6:]}" if len(nid) > 6 else nid)
+                suspect_probs.append(float(m_prob.group(1)))
+
+    # --- 3. Key-value metric lines ---
+    metric_pat = re.compile(r"^([A-Za-z][A-Za-z0-9 /()%_\- ]{1,40})\s*[:\-]\s*([\$0-9,. %+]+)$")
+    metric_lines: list = []
+    prose_lines:  list = []
+    for line in lines:
+        stripped = line.strip().lstrip("├└│ ")
+        if not stripped or re.match(r"^[=\-─]{4,}$", stripped):
+            continue
+        # Don't double-count lines already captured
+        if re.match(r"^\d+\.\s+Transaction ID:", stripped):
+            prose_lines.append(line)
+            continue
+        m = metric_pat.match(stripped)
+        if m and re.search(r"\d", m.group(2)):
             metric_lines.append((m.group(1).strip(), m.group(2).strip()))
         else:
             prose_lines.append(line)
 
-    if metric_lines:
-        cols = st.columns(min(len(metric_lines), 4))
-        for i, (label, value) in enumerate(metric_lines):
-            with cols[i % 4]:
-                st.metric(label, value)
+    # --- Render prose ---
+    prose = "\n".join(prose_lines).strip()
+    if prose:
+        st.markdown(prose)
 
-    if prose_lines:
-        st.markdown("\n".join(prose_lines))
+    # --- Render chart: class distribution ---
+    if dist_data and len(dist_data) >= 2:
+        _dist_colors = {"Licit": "#00CC96", "Illicit": "#FF5A5F", "Unknown": "#888888"}
+        _lbls = list(dist_data.keys())
+        _vals = [dist_data[l]["count"] for l in _lbls]
+        _fig_dist = go.Figure(go.Bar(
+            x=_vals, y=_lbls, orientation="h",
+            marker_color=[_dist_colors.get(l, "#4A90D9") for l in _lbls],
+            text=[f"{dist_data[l]['pct']:.1f}%" for l in _lbls],
+            textposition="outside",
+        ))
+        _fig_dist.update_layout(**_dark_layout(
+            height=200,
+            margin=dict(l=80, r=80, t=20, b=30),
+            xaxis=dict(title="Node count", color="#888"),
+            yaxis=dict(color="#ccc"),
+        ))
+        st.plotly_chart(_fig_dist, use_container_width=True)
+
+    # --- Render chart: ranked suspect nodes ---
+    elif suspect_nodes and len(suspect_nodes) >= 2:
+        _sc = ["#FF5A5F" if p >= 80 else "#FFA726" if p >= 50 else "#00CC96" for p in suspect_probs]
+        _fig_sus = go.Figure(go.Bar(
+            x=suspect_probs[::-1], y=suspect_nodes[::-1], orientation="h",
+            marker_color=_sc[::-1],
+            text=[f"{p:.1f}%" for p in suspect_probs[::-1]],
+            textposition="outside",
+        ))
+        _fig_sus.update_layout(**_dark_layout(
+            height=max(200, len(suspect_nodes) * 32),
+            margin=dict(l=80, r=80, t=20, b=30),
+            xaxis=dict(title="Fraud probability (%)", color="#888", range=[0, 115]),
+            yaxis=dict(color="#ccc"),
+        ))
+        st.plotly_chart(_fig_sus, use_container_width=True)
+
+    # --- Metric cards ---
+    if metric_lines:
+        _mc = min(len(metric_lines), 4)
+        _cols_m = st.columns(_mc)
+        for _i, (_lbl, _val) in enumerate(metric_lines[:8]):
+            _cols_m[_i % _mc].metric(_lbl, _val)
 
 
 def get_feature_name(idx: int) -> str:
@@ -736,17 +812,29 @@ with tab2:
                 _nxl2, _nyl2, _nc2, _nt2, _nh2 = [], [], [], [], []
                 _pred_p2 = {}
 
-                if _color_by2 in ("Fraud Probability", "AI-Predicted Label") and _det2 is not None and _md2 is not None:
+                if _color_by2 in ("Fraud Probability", "AI-Predicted Label") and _det2 is not None:
                     try:
-                        _det2.model.eval()
-                        with torch.no_grad():
-                            _xn2 = torch.FloatTensor(_md2["features"]).to(_det2.device)
-                            _an2 = torch.eye(len(_md2["features"])).to(_det2.device)
-                            _on2 = _det2.model(_xn2, _an2)
-                            _pn2 = torch.sigmoid(_on2).squeeze().cpu().numpy()
-                        if _pn2.ndim == 0:
-                            _pn2 = np.array([float(_pn2)])
-                        _pred_p2 = {str(nid): float(p) for nid, p in zip(_md2["node_ids"], _pn2)}
+                        # Run inference directly on the subgraph nodes' own features
+                        # (not the training sample — that's why all nodes showed 0.21 before)
+                        _sub_feats, _sub_nids = [], []
+                        for _sn2 in _sub2.nodes():
+                            _sf2 = _sub2.nodes[_sn2].get("features")
+                            if _sf2 is not None:
+                                try:
+                                    _sub_feats.append(list(_sf2))
+                                    _sub_nids.append(_sn2)
+                                except Exception:
+                                    pass
+                        if _sub_feats:
+                            _det2.model.eval()
+                            with torch.no_grad():
+                                _xn2 = torch.FloatTensor(np.array(_sub_feats)).to(_det2.device)
+                                _an2 = torch.eye(len(_sub_feats)).to(_det2.device)
+                                _on2 = _det2.model(_xn2, _an2)
+                                _pn2 = torch.sigmoid(_on2).squeeze().cpu().numpy()
+                            if _pn2.ndim == 0:
+                                _pn2 = np.array([float(_pn2)])
+                            _pred_p2 = {str(nid): float(p) for nid, p in zip(_sub_nids, _pn2)}
                     except Exception:
                         pass
 
@@ -887,7 +975,7 @@ with tab3:
             else:
                 st.markdown(_msg3["content"])
 
-    _user_input3 = st.chat_input("Ask about fraud patterns, suspects, or risk...")
+    _user_input3 = st.chat_input("Ask a question — or separate multiple questions with semicolons")
     _pending3    = st.session_state.pop("_chat_pending", None)
     _question3   = _pending3 or _user_input3
 
@@ -902,18 +990,27 @@ with tab3:
         _md3  = st.session_state["model_data"]
 
         if _G3 is not None and _det3 is not None and _md3 is not None:
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    try:
-                        from src.agent.fraud_agent import FraudAgent
-                        _agent3   = FraudAgent(_G3, _det3, _md3)
-                        _response3 = _agent3.ask(_question3)
-                    except Exception as _e3:
-                        _response3 = f"Agent error: {_e3}"
-                    _render_agent_response(_response3)
-                    st.session_state["chat_history"].append(
-                        {"role": "assistant", "content": _response3}
-                    )
+            # Cache agent across reruns — only rebuild if model changes
+            from src.agent.fraud_agent import FraudAgent
+            if ("_fraud_agent" not in st.session_state
+                    or st.session_state.get("_fraud_agent_det") is not _det3):
+                st.session_state["_fraud_agent"] = FraudAgent(_G3, _det3, _md3)
+                st.session_state["_fraud_agent_det"] = _det3
+            _agent3 = st.session_state["_fraud_agent"]
+
+            # Support multiple questions separated by ";" or ","
+            _sub_questions3 = [q.strip() for q in re.split(r"[;,]\s*", _question3) if q.strip()]
+            for _sq3 in _sub_questions3:
+                with st.chat_message("assistant"):
+                    with st.spinner(f"Analysing: {_sq3[:60]}..."):
+                        try:
+                            _response3 = _agent3.ask(_sq3)
+                        except Exception as _e3:
+                            _response3 = f"Agent error: {_e3}"
+                        _render_agent_response(_response3)
+                        st.session_state["chat_history"].append(
+                            {"role": "assistant", "content": _response3}
+                        )
         else:
             with st.chat_message("assistant"):
                 st.warning("Load data and train model first.")
@@ -1225,8 +1322,31 @@ with tab7:
         _bp7 = st.session_state.get("optuna_best")
         if _bp7:
             st.markdown("**Best parameters found:**")
-            _bpdf7 = pd.DataFrame([{"Parameter": k, "Value": str(v)} for k, v in _bp7.items()])
-            st.dataframe(_bpdf7, use_container_width=True, hide_index=True)
+            _param_desc7 = {
+                "hidden_dim": "Width of each GNN layer (larger = more expressive, slower)",
+                "num_layers": "Graph traversal depth — how many hops the model considers",
+                "dropout":    "Regularisation rate — reduces overfitting (0 = off, 0.5 = heavy)",
+                "lr":         "Learning rate — gradient descent step size",
+                "best_auc":   "AUC achieved with these parameters during optimisation",
+            }
+            _bprows7 = [
+                {"Parameter": k, "Value": str(v), "Description": _param_desc7.get(k, "")}
+                for k, v in _bp7.items()
+            ]
+            st.dataframe(
+                pd.DataFrame(_bprows7),
+                use_container_width=True, hide_index=True,
+            )
+            st.markdown(
+                '<div class="context-box" style="margin-top:8px;font-size:0.82rem;">'
+                '<strong>Where are these parameters used?</strong> Clicking '
+                '"Apply Optimised Parameters" retrains the GNN model with these settings '
+                'and replaces the active model in memory. All tabs — Network Explorer, '
+                'AI Chat, Risk Analysis, Explainability, Forecast, Contagion — will then '
+                'use the retrained model. The default baseline uses '
+                'hidden_dim=64, num_layers=2, dropout=0.3.</div>',
+                unsafe_allow_html=True,
+            )
 
             if st.button(":material/model_training: Apply Optimised Parameters", key="apply_opt7"):
                 with st.spinner("Retraining with optimised parameters..."):
@@ -1251,6 +1371,22 @@ with tab7:
 
     with ml2:
         st.markdown("#### Ensemble Model")
+        with st.expander("What is the difference between mean and sum aggregation?", expanded=False):
+            st.markdown("""
+**GraphSAGE aggregators** define how a node combines information from its neighbours:
+
+| Aggregator | How it works | Best for |
+|---|---|---|
+| **mean** | Averages all neighbour feature vectors | Stable signal, balanced graphs — each neighbour contributes equally regardless of degree |
+| **sum** | Sums all neighbour feature vectors | Hub detection — high-degree nodes (e.g. Bitcoin mixers) receive amplified signals because more neighbours add up |
+| **max** | Takes the element-wise maximum | Detecting whether *any* suspicious neighbour exists — ignores quiet neighbours, highlights extremes |
+
+**Implication for fraud detection:** In the Elliptic network, the top-degree node has 473 connections.
+A `sum` aggregator gives that node a much larger aggregated feature vector than a `mean` aggregator does,
+making it easier for the model to recognise transaction hubs as high-risk.
+A `mean` aggregator is less sensitive to degree, so it performs more consistently across sparse and dense nodes.
+In practice, training both and comparing AUC tells you which signal structure your graph favours.
+""")
         _ens_btn7 = st.button(":material/group_work: Train Ensemble", type="primary", key="ens7")
         if _ens_btn7:
             if _G7 is None:
