@@ -1952,13 +1952,22 @@ with tab11:
     _det11 = st.session_state["detector"]
     _md11  = st.session_state["model_data"]
 
+    # ── Page-level perspective toggle ─────────────────────────────────────────
+    _perf_view11 = st.radio(
+        "View as",
+        ["Finance User", "Data Scientist"],
+        horizontal=True,
+        key="perf_page_view11",
+        help="Finance: Sharpe/Sortino/IR/Calmar. Data Scientist: TPR distribution, consistency, floor.",
+    )
+
     _n_per11  = st.slider(
         "Time periods (bootstrap samples)", 10, 49, 23, 1,
-        help="Number of bootstrapped samples over the 49 Elliptic time steps. Higher = more stable estimate.",
+        help="Number of bootstrapped samples. Higher = more stable estimate. Ratios scale with √n_periods.",
     )
     _perf_btn11 = st.button(":material/analytics: Compute Metrics", type="primary", key="perf11")
 
-    # Warn user if slider changed since last computation
+    # Warn if slider moved since last computation
     _stored_n11 = st.session_state.get("perf_n_periods")
     if _stored_n11 is not None and _stored_n11 != _n_per11:
         st.info(
@@ -1975,45 +1984,36 @@ with tab11:
                     from src.analytics.risk_adjusted_metrics import RiskAdjustedAnalyzer
                     _raa11 = RiskAdjustedAnalyzer(_G11, _det11, _md11)
                     _rpt11 = _raa11.full_report(n_periods=_n_per11)
-                    st.session_state["perf_results"]   = _rpt11
-                    st.session_state["perf_n_periods"] = _n_per11
-                    # Store raw TPR series for the radar (natural [0,1] axes)
+                    st.session_state["perf_results"]      = _rpt11
+                    st.session_state["perf_n_periods"]    = _n_per11
                     st.session_state["perf_tpr_series"]   = _raa11._returns.tolist() if _raa11._returns is not None else []
                     st.session_state["perf_bench_series"] = _raa11._benchmark_returns.tolist() if _raa11._benchmark_returns is not None else []
                 except Exception as _e11:
                     st.error(f"Performance metrics error: {_e11}")
 
-    _pr11 = st.session_state.get("perf_results")
+    _pr11     = st.session_state.get("perf_results")
+    _tpr_s11  = np.array(st.session_state.get("perf_tpr_series",   []))
+    _bench_s11 = np.array(st.session_state.get("perf_bench_series", []))
+
+    import math as _math11
+    def _lnorm11(v, ceil): return min(1.0, _math11.log1p(max(v, 0)) / _math11.log1p(ceil))
+
     if _pr11:
-        pm1, pm2, pm3, pm4 = st.columns(4)
-        pm1.metric("Sharpe Ratio",      f"{_pr11['sharpe']['sharpe_ratio']:.4f}",
-                   help="(mean TPR - risk_free) / std TPR, annualised. >1 = good.")
-        pm2.metric("Sortino Ratio",     f"{_pr11['sortino']['sortino_ratio']:.4f}",
-                   help="Like Sharpe but penalises only downside deviations (false negatives).")
-        pm3.metric("Information Ratio", f"{_pr11['information']['information_ratio']:.4f}",
-                   help="Excess TPR over degree-threshold benchmark / tracking error. >0.5 = beats naive baseline.")
-        pm4.metric("Calmar Ratio",      f"{_pr11['calmar']['calmar_ratio']:.4f}",
-                   help="Annualised mean TPR / maximum drawdown. Higher = better recovery from worst periods.")
+        # ── FINANCE VIEW ──────────────────────────────────────────────────────
+        if _perf_view11 == "Finance User":
+            pm1, pm2, pm3, pm4 = st.columns(4)
+            pm1.metric("Sharpe Ratio",      f"{_pr11['sharpe']['sharpe_ratio']:.4f}",
+                       help="(mean TPR − risk_free) / std TPR × √n. >1 = detection return compensates volatility.")
+            pm2.metric("Sortino Ratio",     f"{_pr11['sortino']['sortino_ratio']:.4f}",
+                       help="Like Sharpe but penalises only downside (false-negative) deviations.")
+            pm3.metric("Information Ratio", f"{_pr11['information']['information_ratio']:.4f}",
+                       help="Excess TPR over degree-threshold benchmark / tracking error. >0.5 = beats naive baseline.")
+            pm4.metric("Calmar Ratio",      f"{_pr11['calmar']['calmar_ratio']:.4f}",
+                       help="Mean TPR × n_periods / maximum drawdown. Higher = better recovery from bad patches.")
 
-        ra1, ra2 = st.columns(2)
-        with ra1:
-            st.markdown("**Performance Radar**")
-            _radar_view11 = st.radio(
-                "Perspective",
-                ["Finance Metrics", "ML Metrics"],
-                horizontal=True,
-                key="perf_radar_view11",
-                help="Finance: Sharpe/Sortino/IR/Calmar (log-scaled). ML: TPR-based axes that change visibly with n_periods.",
-            )
-
-            _tpr_s11   = np.array(st.session_state.get("perf_tpr_series",   []))
-            _bench_s11 = np.array(st.session_state.get("perf_bench_series", []))
-
-            if _radar_view11 == "Finance Metrics":
-                # Log-scale normalization so shape reflects relative ratio strength
-                # (linear scale always saturates because all ratios are 100-1000×)
-                import math as _math11
-                def _lnorm11(v, ceil): return min(1.0, _math11.log1p(max(v, 0)) / _math11.log1p(ceil))
+            ra1, ra2 = st.columns(2)
+            with ra1:
+                st.markdown("**Performance Radar**")
                 _sh11  = _pr11["sharpe"]["sharpe_ratio"]
                 _so11  = _pr11["sortino"]["sortino_ratio"]
                 _ir11v = _pr11["information"]["information_ratio"]
@@ -2024,103 +2024,160 @@ with tab11:
                     round(_lnorm11(_ir11v, 200),  4),
                     round(_lnorm11(_ca11,  1000), 4),
                 ]
-                _rc11   = ["Sharpe", "Sortino", "IR", "Calmar"]
-                _cap11  = (
-                    "Log-scaled to [0,1] against finance benchmarks (Sharpe ceiling 500, "
-                    "Sortino 5000, IR 200, Calmar 1000). A larger shape = stronger risk-adjusted return. "
-                    "Sortino above Sharpe means upside variability exceeds downside — the model fails gracefully."
+                _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
+                _rdf11 = go.Figure(go.Scatterpolar(
+                    r=_rv11 + [_rv11[0]], theta=_rc11 + [_rc11[0]],
+                    fill="toself", fillcolor=_to_rgba("#4A90D9", 0.25),
+                    line=dict(color="#4A90D9"), name="Model",
+                ))
+                _rdf11.update_layout(**_dark_layout(
+                    height=320, polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                    margin=dict(l=40, r=40, t=40, b=40),
+                ))
+                st.plotly_chart(_rdf11, use_container_width=True)
+                st.caption(
+                    "Log-scaled against finance ceilings (Sharpe 500, Sortino 5000, IR 200, Calmar 1000). "
+                    "Larger shape = stronger risk-adjusted return. Sortino > Sharpe = model fails gracefully. "
+                    "Shape grows with n_periods because ratios scale with √n."
                 )
-            else:
-                # Natural [0,1] axes derived from raw TPR series — change visibly with n_periods
-                if len(_tpr_s11) > 0:
-                    _tpr_mean11  = float(_tpr_s11.mean())
-                    _tpr_std11   = float(_tpr_s11.std(ddof=1)) if len(_tpr_s11) > 1 else 0.02
-                    _tpr_floor11 = float(_tpr_s11.min())
-                    _bench_m11   = float(_bench_s11.mean()) if len(_bench_s11) > 0 else 0.25
-                    _rv11 = [
+
+            with ra2:
+                st.markdown("**TPR Series vs Benchmark**")
+                _ir11  = _pr11["information"]
+                _tx11  = list(range(1, len(_ir11["model_series"]) + 1))
+                _tprf11 = go.Figure()
+                _tprf11.add_trace(go.Scatter(
+                    x=_tx11, y=_ir11["model_series"].tolist(),
+                    mode="lines", name="GNN Model", line=dict(color="#4A90D9"),
+                ))
+                _tprf11.add_trace(go.Scatter(
+                    x=_tx11, y=_ir11["benchmark_series"].tolist(),
+                    mode="lines", name="Degree Benchmark",
+                    line=dict(color="#FFA726", dash="dash"),
+                ))
+                _tprf11.update_layout(**_dark_layout(
+                    height=320,
+                    xaxis=dict(title="Period", color="#888"),
+                    yaxis=dict(title="True Positive Rate", color="#888"),
+                    legend=dict(font=dict(size=11)),
+                    margin=dict(l=40, r=20, t=30, b=40),
+                ))
+                st.plotly_chart(_tprf11, use_container_width=True)
+                st.caption(
+                    "Blue = GNN model TPR per bootstrap period; orange dashed = naive degree-threshold baseline. "
+                    "Gap between lines is the Information Ratio — the model consistently outperforms when blue > orange."
+                )
+
+            st.markdown("**Drawdown**")
+            _cal11 = _pr11["calmar"]
+            _ddx11 = list(range(1, len(_cal11["drawdown_series"]) + 1))
+            _ddf11 = go.Figure(go.Scatter(
+                x=_ddx11, y=_cal11["drawdown_series"].tolist(),
+                mode="lines", fill="tozeroy",
+                fillcolor=_to_rgba("#FF5A5F", 0.15),
+                line=dict(color="#FF5A5F"), name="Drawdown",
+            ))
+            _ddf11.update_layout(**_dark_layout(
+                height=200,
+                xaxis=dict(title="Period", color="#888"),
+                yaxis=dict(title="Drawdown", color="#888"),
+                margin=dict(l=40, r=20, t=20, b=40),
+            ))
+            st.plotly_chart(_ddf11, use_container_width=True)
+            st.caption(
+                "Shaded area = how far cumulative TPR dropped from its peak. "
+                "Spikes indicate consecutive bad detection periods."
+            )
+
+            if _pr11.get("interpretation"):
+                st.markdown("**Interpretation**")
+                for _int11 in _pr11["interpretation"]:
+                    st.markdown(f"- {_int11}")
+
+        # ── DATA SCIENTIST VIEW ───────────────────────────────────────────────
+        else:
+            if len(_tpr_s11) > 0:
+                _tpr_mean11  = float(_tpr_s11.mean())
+                _tpr_std11   = float(_tpr_s11.std(ddof=1)) if len(_tpr_s11) > 1 else 0.0
+                _tpr_floor11 = float(_tpr_s11.min())
+                _bench_m11   = float(_bench_s11.mean()) if len(_bench_s11) > 0 else 0.25
+
+                dm1, dm2, dm3, dm4 = st.columns(4)
+                dm1.metric("Mean TPR",        f"{_tpr_mean11:.4f}",
+                           help="Average true-positive rate across all bootstrap periods.")
+                dm2.metric("Std TPR",         f"{_tpr_std11:.4f}",
+                           help="Variability of TPR across periods — lower is more consistent.")
+                dm3.metric("Floor (Min TPR)", f"{_tpr_floor11:.4f}",
+                           help="Worst single-period detection rate — the model's bad-day performance.")
+                dm4.metric("vs Benchmark",    f"+{_tpr_mean11 - _bench_m11:.4f}",
+                           help="Outperformance over degree-threshold naive baseline.")
+
+                ds1, ds2 = st.columns(2)
+                with ds1:
+                    st.markdown("**ML Performance Radar**")
+                    _rv11_ml = [
                         round(_tpr_mean11, 4),
                         round(max(0.0, 1.0 - _tpr_std11 * 15), 4),
                         round(_tpr_floor11, 4),
                         round(min(1.0, max(0.0, _tpr_mean11 - _bench_m11)), 4),
                     ]
-                else:
-                    _rv11 = [0.5, 0.5, 0.5, 0.5]
-                _rc11  = ["Avg TPR", "Consistency", "Floor", "vs Benchmark"]
-                _cap11 = (
-                    "Avg TPR = mean detection rate; Consistency = 1 − 15×std (higher = stabler); "
-                    "Floor = worst single period TPR; vs Benchmark = outperformance over degree-threshold baseline. "
-                    "All axes are natural [0,1] — shape changes when n_periods changes."
-                )
+                    _rc11_ml = ["Avg TPR", "Consistency", "Floor", "vs Benchmark"]
+                    _rdf11_ml = go.Figure(go.Scatterpolar(
+                        r=_rv11_ml + [_rv11_ml[0]], theta=_rc11_ml + [_rc11_ml[0]],
+                        fill="toself", fillcolor=_to_rgba("#00CC96", 0.25),
+                        line=dict(color="#00CC96"), name="Model",
+                    ))
+                    _rdf11_ml.update_layout(**_dark_layout(
+                        height=320, polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                        margin=dict(l=40, r=40, t=40, b=40),
+                    ))
+                    st.plotly_chart(_rdf11_ml, use_container_width=True)
+                    st.caption(
+                        "All axes natural [0,1]. Consistency = 1 − 15×std; Floor = min TPR; "
+                        "vs Benchmark = raw TPR outperformance. Shape changes visibly with n_periods slider."
+                    )
 
-            _rdf11 = go.Figure(go.Scatterpolar(
-                r=_rv11 + [_rv11[0]],
-                theta=_rc11 + [_rc11[0]],
-                fill="toself",
-                fillcolor=_to_rgba("#4A90D9", 0.25),
-                line=dict(color="#4A90D9"),
-                name="Model",
-            ))
-            _rdf11.update_layout(**_dark_layout(
-                height=320,
-                polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
-                margin=dict(l=40, r=40, t=40, b=40),
-            ))
-            st.plotly_chart(_rdf11, use_container_width=True)
-            st.caption(_cap11)
+                with ds2:
+                    st.markdown("**TPR Distribution across Periods**")
+                    _hist11 = go.Figure(go.Histogram(
+                        x=_tpr_s11.tolist(), nbinsx=15,
+                        marker_color="#4A90D9", opacity=0.8,
+                    ))
+                    _hist11.update_layout(**_dark_layout(
+                        height=320,
+                        xaxis=dict(title="TPR per Period", color="#888"),
+                        yaxis=dict(title="Count", color="#888"),
+                        margin=dict(l=40, r=20, t=30, b=40),
+                    ))
+                    st.plotly_chart(_hist11, use_container_width=True)
+                    st.caption(
+                        "Distribution of per-period TPR across bootstrap samples. "
+                        "A tight cluster near 1.0 means the model is reliably consistent; "
+                        "a wide spread or left tail indicates instability in some periods."
+                    )
 
-        with ra2:
-            st.markdown("**TPR Series vs Benchmark**")
-            _ir11  = _pr11["information"]
-            _tx11  = list(range(1, len(_ir11["model_series"]) + 1))
-            _tprf11 = go.Figure()
-            _tprf11.add_trace(go.Scatter(
-                x=_tx11, y=_ir11["model_series"].tolist(),
-                mode="lines", name="GNN Model", line=dict(color="#4A90D9"),
-            ))
-            _tprf11.add_trace(go.Scatter(
-                x=_tx11, y=_ir11["benchmark_series"].tolist(),
-                mode="lines", name="Degree Benchmark",
-                line=dict(color="#FFA726", dash="dash"),
-            ))
-            _tprf11.update_layout(**_dark_layout(
-                height=320,
-                xaxis=dict(title="Period", color="#888"),
-                yaxis=dict(title="True Positive Rate", color="#888"),
-                legend=dict(font=dict(size=11)),
-                margin=dict(l=40, r=20, t=30, b=40),
-            ))
-            st.plotly_chart(_tprf11, use_container_width=True)
-            st.caption(
-                "Blue = GNN model TPR per bootstrap period; orange dashed = naive degree-threshold baseline. "
-                "Gap between lines is the Information Ratio — the model consistently outperforms when blue > orange."
-            )
-
-        st.markdown("**Drawdown**")
-        _cal11 = _pr11["calmar"]
-        _ddx11 = list(range(1, len(_cal11["drawdown_series"]) + 1))
-        _ddf11 = go.Figure(go.Scatter(
-            x=_ddx11, y=_cal11["drawdown_series"].tolist(),
-            mode="lines", fill="tozeroy",
-            fillcolor=_to_rgba("#FF5A5F", 0.15),
-            line=dict(color="#FF5A5F"),
-            name="Drawdown",
-        ))
-        _ddf11.update_layout(**_dark_layout(
-            height=200,
-            xaxis=dict(title="Period", color="#888"),
-            yaxis=dict(title="Drawdown", color="#888"),
-            margin=dict(l=40, r=20, t=20, b=40),
-        ))
-        st.plotly_chart(_ddf11, use_container_width=True)
-        st.caption(
-            "Shaded area = how far the cumulative TPR dropped from its peak in each period. "
-            "Spikes indicate stretches when the model had consecutive bad detection periods."
-        )
-
-        if _pr11.get("interpretation"):
-            st.markdown("**Interpretation**")
-            for _int11 in _pr11["interpretation"]:
-                st.markdown(f"- {_int11}")
+                # Active return distribution
+                if len(_bench_s11) == len(_tpr_s11):
+                    _act11 = _tpr_s11 - _bench_s11
+                    st.markdown("**Active Return Distribution (GNN minus Benchmark)**")
+                    _ahist11 = go.Figure(go.Histogram(
+                        x=_act11.tolist(), nbinsx=15,
+                        marker_color="#00CC96", opacity=0.8,
+                    ))
+                    _ahist11.add_vline(x=0, line_dash="dash", line_color="#888")
+                    _ahist11.update_layout(**_dark_layout(
+                        height=200,
+                        xaxis=dict(title="TPR − Benchmark TPR", color="#888"),
+                        yaxis=dict(title="Count", color="#888"),
+                        margin=dict(l=40, r=20, t=20, b=40),
+                    ))
+                    st.plotly_chart(_ahist11, use_container_width=True)
+                    st.caption(
+                        "How much better (or worse) than the naive baseline the model was each period. "
+                        "All bars right of zero = model always outperforms; width reflects tracking error."
+                    )
+            else:
+                st.info("Run Compute Metrics first to see ML metrics.")
 
     _biz_box(
         "Is our fraud detector worth the investment?",
