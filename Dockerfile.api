@@ -25,7 +25,12 @@ RUN poetry install --no-interaction --no-ansi
 COPY . .
 
 # Set Python path
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
+
+# Pre-compute API cache during build (build env has 8 GB RAM; runtime has 512 MB).
+# Produces data/api_cache.json (~50 KB) and data/api_model_weights.pt (~5 MB).
+# The runtime process loads only these two files — no parquet, no NetworkX graph.
+RUN python scripts/precompute_api_cache.py
 
 # Set environment variables
 ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
