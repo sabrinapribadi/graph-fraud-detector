@@ -476,9 +476,10 @@ if not st.session_state["data_loaded"]:
 
 if st.session_state["data_loaded"] and not st.session_state["model_trained"]:
     try:
-        det, md, _ = train_model(st.session_state["G"])
-        st.session_state["detector"]     = det
-        st.session_state["model_data"]   = md
+        det, md, mtr = train_model(st.session_state["G"])
+        st.session_state["detector"]      = det
+        st.session_state["model_data"]    = md
+        st.session_state["model_metrics"] = mtr
         st.session_state["model_trained"] = True
     except Exception:
         pass  # model failure is non-fatal; UI degrades gracefully
@@ -1384,9 +1385,10 @@ with tab7:
                         _nd7  = _new7.build_graph_data(_G7, sample_size=2000, balance_classes=True)
                         _new7.train(_nd7, epochs=80, early_stopping=15)
                         _nm7  = _new7.evaluate(_nd7)
-                        st.session_state["detector"]    = _new7
-                        st.session_state["model_data"]  = _nd7
-                        st.session_state["model_trained"] = True
+                        st.session_state["detector"]       = _new7
+                        st.session_state["model_data"]     = _nd7
+                        st.session_state["model_metrics"]  = _nm7
+                        st.session_state["model_trained"]  = True
                         st.success(
                             f"Model retrained with optimised parameters. New AUC: {_nm7['auc']:.3f}"
                         )
@@ -1988,13 +1990,19 @@ with tab11:
                     st.session_state["perf_n_periods"]    = _n_per11
                     st.session_state["perf_tpr_series"]   = _raa11._returns.tolist() if _raa11._returns is not None else []
                     st.session_state["perf_bench_series"] = _raa11._benchmark_returns.tolist() if _raa11._benchmark_returns is not None else []
-                    # Update running max per metric for min-max radar normalisation
-                    _prev_max = st.session_state.get("perf_max_ever", {})
-                    st.session_state["perf_max_ever"] = {
-                        "sharpe":  max(_prev_max.get("sharpe",  0), _rpt11["sharpe"]["sharpe_ratio"]),
-                        "sortino": max(_prev_max.get("sortino", 0), _rpt11["sortino"]["sortino_ratio"]),
-                        "ir":      max(_prev_max.get("ir",      0), _rpt11["information"]["information_ratio"]),
-                        "calmar":  max(_prev_max.get("calmar",  0), _rpt11["calmar"]["calmar_ratio"]),
+                    # Derive [n=10, n=49] range analytically from current run:
+                    # Sharpe/Sortino/IR scale with sqrt(n); Calmar scales linearly with n.
+                    import math as _m11
+                    _ns = float(_n_per11)
+                    _sh_c  = _rpt11["sharpe"]["sharpe_ratio"]
+                    _so_c  = _rpt11["sortino"]["sortino_ratio"]
+                    _ir_c  = _rpt11["information"]["information_ratio"]
+                    _ca_c  = _rpt11["calmar"]["calmar_ratio"]
+                    st.session_state["perf_range"] = {
+                        "sharpe":  [_sh_c * _m11.sqrt(10)/_m11.sqrt(_ns), _sh_c * _m11.sqrt(49)/_m11.sqrt(_ns)],
+                        "sortino": [_so_c * _m11.sqrt(10)/_m11.sqrt(_ns), _so_c * _m11.sqrt(49)/_m11.sqrt(_ns)],
+                        "ir":      [_ir_c * _m11.sqrt(10)/_m11.sqrt(_ns), _ir_c * _m11.sqrt(49)/_m11.sqrt(_ns)],
+                        "calmar":  [_ca_c * 10.0 / _ns,                   _ca_c * 49.0 / _ns],
                     }
                 except Exception as _e11:
                     st.error(f"Performance metrics error: {_e11}")
@@ -2006,6 +2014,7 @@ with tab11:
     if _pr11:
         # ── FINANCE VIEW ──────────────────────────────────────────────────────
         if _perf_view11 == "Finance User":
+            # Row 1: risk-adjusted ratio cards
             pm1, pm2, pm3, pm4 = st.columns(4)
             pm1.metric("Sharpe Ratio",      f"{_pr11['sharpe']['sharpe_ratio']:.4f}",
                        help="(mean TPR − risk_free) / std TPR × √n. >1 = detection return compensates volatility.")
@@ -2016,6 +2025,22 @@ with tab11:
             pm4.metric("Calmar Ratio",      f"{_pr11['calmar']['calmar_ratio']:.4f}",
                        help="Mean TPR × n_periods / maximum drawdown. Higher = better recovery from bad patches.")
 
+            # Row 2: model quality cards — framed in business terms
+            _mtr11 = st.session_state.get("model_metrics", {})
+            qm1, qm2, qm3, qm4 = st.columns(4)
+            qm1.metric("Fraud Catch Rate",
+                       f"{_mtr11.get('recall', _pr11['sharpe']['mean_tpr']):.1%}",
+                       help="Recall / TPR — what % of actual fraudulent transactions the model correctly flags.")
+            qm2.metric("Alert Accuracy",
+                       f"{_mtr11.get('precision', 0.0):.1%}",
+                       help="Precision — what % of transactions flagged by the model are genuinely fraudulent.")
+            qm3.metric("Ranking Confidence",
+                       f"{_mtr11.get('auc', 0.0):.3f}",
+                       help="AUC — how reliably the model ranks a fraud above a legitimate transaction (1.0 = perfect).")
+            qm4.metric("Overall F1",
+                       f"{_mtr11.get('f1', 0.0):.3f}",
+                       help="Harmonic mean of Catch Rate and Alert Accuracy — the balanced single-number scorecard.")
+
             ra1, ra2 = st.columns(2)
             with ra1:
                 _sh11  = _pr11["sharpe"]["sharpe_ratio"]
@@ -2023,21 +2048,23 @@ with tab11:
                 _ir11v = _pr11["information"]["information_ratio"]
                 _ca11  = _pr11["calmar"]["calmar_ratio"]
 
-                _radar_hdr1, _radar_hdr2 = st.columns([3, 1])
-                with _radar_hdr1:
-                    st.markdown("**Performance Radar**")
-                with _radar_hdr2:
-                    if st.button("Reset baseline", key="perf_reset11", help="Clear stored max values to restart comparison"):
-                        st.session_state.pop("perf_max_ever", None)
-                        st.rerun()
+                st.markdown("**Performance Radar** — position within n=10 → n=49 range")
 
-                # Min-max normalisation: axis = current / max_ever_seen (0 = min, 1 = best run)
-                _maxes = st.session_state.get("perf_max_ever", {})
+                # Min-max normalisation using analytically-derived [n=10, n=49] range.
+                # Sharpe/Sortino/IR scale with √n; Calmar scales linearly.
+                # 0.0 = performance at n=10, 1.0 = performance at n=49.
+                import math as _m11b
+                def _rng_norm11(v, key):
+                    _rng = st.session_state.get("perf_range", {}).get(key)
+                    if not _rng or _rng[1] <= _rng[0]:
+                        return 1.0
+                    return max(0.0, min(1.0, (v - _rng[0]) / (_rng[1] - _rng[0])))
+
                 _rv11  = [
-                    round(min(1.0, _sh11  / max(_maxes.get("sharpe",  _sh11),  1e-9)), 4),
-                    round(min(1.0, _so11  / max(_maxes.get("sortino", _so11),  1e-9)), 4),
-                    round(min(1.0, _ir11v / max(_maxes.get("ir",      _ir11v), 1e-9)), 4),
-                    round(min(1.0, _ca11  / max(_maxes.get("calmar",  _ca11),  1e-9)), 4),
+                    round(_rng_norm11(_sh11,  "sharpe"),  4),
+                    round(_rng_norm11(_so11,  "sortino"), 4),
+                    round(_rng_norm11(_ir11v, "ir"),      4),
+                    round(_rng_norm11(_ca11,  "calmar"),  4),
                 ]
                 _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
                 _rdf11 = go.Figure(go.Scatterpolar(
@@ -2050,10 +2077,11 @@ with tab11:
                     margin=dict(l=40, r=40, t=40, b=40),
                 ))
                 st.plotly_chart(_rdf11, use_container_width=True)
+                _n_stored = st.session_state.get("perf_n_periods", "?")
                 st.caption(
-                    "Each axis = current value ÷ best run so far (1.0 = your highest recorded value). "
-                    "Run Compute at different n_periods to see the shape grow or shrink. "
-                    "Click **Reset baseline** to restart comparison from scratch."
+                    f"0.0 = metric at n=10 (minimum), 1.0 = metric at n=49 (maximum). "
+                    f"Current n={_n_stored}. Slide to n=10 → small shape; slide to n=49 → full shape. "
+                    f"Shape is consistent across runs — derived from the scaling law, not accumulated history."
                 )
 
             with ra2:
