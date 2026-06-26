@@ -268,37 +268,37 @@ class TemporalAnalyzer:
         summary = self.get_activity_summary()
         
         report = f"""
-📊 TEMPORAL ANALYSIS REPORT
+TEMPORAL ANALYSIS REPORT
 ===========================================
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-1️⃣ OVERVIEW
+1. OVERVIEW
 -------------------------
 Total Nodes: {summary['total_nodes']:,}
 Average Degree: {summary['avg_degree']:.2f}
 Max Degree: {summary['max_degree']:,}
 Min Degree: {summary['min_degree']}
 
-2️⃣ CLASS DISTRIBUTION
+2. CLASS DISTRIBUTION
 -------------------------
 Illicit: {trends['class_distribution']['illicit']:,} ({trends['class_distribution']['illicit']/summary['total_nodes']*100:.1f}%)
 Licit: {trends['class_distribution']['licit']:,} ({trends['class_distribution']['licit']/summary['total_nodes']*100:.1f}%)
 Unknown: {trends['class_distribution']['unknown']:,} ({trends['class_distribution']['unknown']/summary['total_nodes']*100:.1f}%)
 
-3️⃣ TRANSACTION VELOCITY
+3. TRANSACTION VELOCITY
 -------------------------
 Average Degree: {velocity['avg_degree']:.2f}
 Maximum Degree: {velocity['max_degree']:,}
 High Velocity Threshold: {velocity['high_velocity_threshold']:.1f}
 Nodes with High Velocity: {velocity['num_high_velocity_nodes']:,}
 
-4️⃣ ACTIVITY PATTERNS
+4. ACTIVITY PATTERNS
 -------------------------
 High Activity (>20 connections): {time_patterns['pattern_analysis']['high_activity']['count']:,} ({time_patterns['pattern_analysis']['high_activity']['percentage']:.1f}%)
 Medium Activity (5-20 connections): {time_patterns['pattern_analysis']['medium_activity']['count']:,} ({time_patterns['pattern_analysis']['medium_activity']['percentage']:.1f}%)
 Low Activity (<5 connections): {time_patterns['pattern_analysis']['low_activity']['count']:,} ({time_patterns['pattern_analysis']['low_activity']['percentage']:.1f}%)
 
-5️⃣ TEMPORAL ANOMALIES
+5. TEMPORAL ANOMALIES
 -------------------------
 Found {len(anomalies)} anomalies
 Top Anomalies:

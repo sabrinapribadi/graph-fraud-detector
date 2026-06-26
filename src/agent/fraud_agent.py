@@ -41,14 +41,14 @@ class FraudAgent:
         # Get API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key or api_key == "sk-your-actual-key-here" or api_key == "sk-your-actual-key-here...":
-            print("⚠️  WARNING: Valid OPENAI_API_KEY not found in environment variables.")
+            print("WARNING: Valid OPENAI_API_KEY not found in environment variables.")
             print("Running in fallback mode - will return direct tool responses.")
             self.mock_mode = True
             self.agent = None
             self.llm = None
         else:
             self.mock_mode = False
-            print(f"✅ OpenAI API key loaded")
+            print("OpenAI API key loaded.")
             
             # Initialize LLM
             self.llm = ChatOpenAI(
@@ -79,9 +79,9 @@ class FraudAgent:
                     Your goal is to help users understand fraud patterns and make data-driven decisions.
                     """
                 )
-                print("✅ Agent initialized successfully!")
+                print("Agent initialized successfully.")
             except Exception as e:
-                print(f"⚠️  Agent initialization failed: {e}")
+                print(f"Agent initialization failed: {e}")
                 print("Running in fallback mode")
                 self.mock_mode = True
                 self.agent = None
@@ -103,7 +103,7 @@ class FraudAgent:
             unknown = sum(1 for l in labels if l == -1)
             
             output = f"""
-📊 FRAUD STATISTICS
+FRAUD STATISTICS
 ================================
 Total Transactions: {total:,}
 ├── Licit: {licit:,} ({licit/total*100:.1f}%)
@@ -148,7 +148,7 @@ Fraud Rate (of labeled): {(illicit/(licit+illicit)*100):.1f}%
                 results.sort(key=lambda x: x['fraud_probability'], reverse=True)
                 top_results = results[:n]
                 
-                output = f"🔍 TOP {n} MOST SUSPICIOUS TRANSACTIONS\n"
+                output = f"TOP {n} MOST SUSPICIOUS TRANSACTIONS\n"
                 output += "=" * 50 + "\n\n"
                 
                 if not top_results:
@@ -156,7 +156,7 @@ Fraud Rate (of labeled): {(illicit/(licit+illicit)*100):.1f}%
                 else:
                     for i, result in enumerate(top_results, 1):
                         prob = result['fraud_probability'] * 100
-                        risk_level = "🔴 HIGH" if prob > 80 else "🟡 MEDIUM" if prob > 50 else "🟢 LOW"
+                        risk_level = "HIGH" if prob > 80 else "MEDIUM" if prob > 50 else "LOW"
                         output += f"{i}. Transaction ID: {result['node_id']}\n"
                         output += f"   Fraud Probability: {prob:.1f}%\n"
                         output += f"   Risk Level: {risk_level}\n\n"
@@ -179,7 +179,7 @@ Fraud Rate (of labeled): {(illicit/(licit+illicit)*100):.1f}%
             isolates = nx.number_of_isolates(G)
             
             output = f"""
-🌐 NETWORK ANALYSIS
+NETWORK ANALYSIS
 ================================
 
 Basic Statistics:
@@ -202,11 +202,11 @@ Degree Distribution:
                 node_id = node_id.strip()
                 
                 if node_id not in self.G:
-                    return f"❌ Transaction ID {node_id} not found in the dataset"
+                    return f"Transaction ID {node_id} not found in the dataset."
                 
                 node_data = self.G.nodes[node_id]
                 if 'features' not in node_data:
-                    return f"❌ Node {node_id} has no features"
+                    return f"Node {node_id} has no features."
                 
                 features = node_data['features']
                 label = node_data.get('label', -1)
@@ -220,10 +220,10 @@ Degree Distribution:
                     prob = torch.sigmoid(output).squeeze().item()
                 
                 actual = "LICIT" if label == 0 else "ILLICIT" if label == 1 else "UNKNOWN"
-                risk_level = "🔴 HIGH" if prob > 0.8 else "🟡 MEDIUM" if prob > 0.5 else "🟢 LOW"
+                risk_level = "HIGH" if prob > 0.8 else "MEDIUM" if prob > 0.5 else "LOW"
                 
                 output = f"""
-🎯 TRANSACTION FRAUD ANALYSIS
+TRANSACTION FRAUD ANALYSIS
 ================================
 
 Transaction ID: {node_id}
@@ -232,12 +232,12 @@ Fraud Probability: {prob:.1%}
 Risk Level: {risk_level}
 
 Recommendation:
-{'🚨 BLOCK' if prob > 0.8 else '⚠️ REVIEW' if prob > 0.5 else '✅ APPROVE'}
+{'BLOCK' if prob > 0.8 else 'REVIEW' if prob > 0.5 else 'APPROVE'}
 """
                 return output
             
             except Exception as e:
-                return f"❌ Error analyzing transaction: {str(e)}"
+                return f"Error analyzing transaction: {str(e)}"
         
         @tool
         def run_risk_analysis(n_transactions: int = 10000, fraud_rate: float = 0.02, avg_loss: float = 5000) -> str:
@@ -253,7 +253,7 @@ Recommendation:
                 )
                 
                 output = f"""
-💰 QUANTITATIVE RISK ANALYSIS
+QUANTITATIVE RISK ANALYSIS
 ================================
 
 Parameters:
@@ -270,7 +270,7 @@ Results:
                 return output
             
             except Exception as e:
-                return f"❌ Error running risk analysis: {str(e)}"
+                return f"Error running risk analysis: {str(e)}"
         
         @tool
         def get_anomalous_patterns(query: str = "") -> str:
@@ -284,13 +284,13 @@ Results:
             top_hubs = degrees[:5]
             
             if top_hubs:
-                patterns.append("🏢 High-Degree Hubs:")
+                patterns.append("High-Degree Hubs:")
                 for node, degree in top_hubs:
                     label = G.nodes[node].get('label', -1)
-                    label_str = "🔴 Illicit" if label == 1 else "🟢 Licit" if label == 0 else "❓ Unknown"
+                    label_str = "Illicit" if label == 1 else "Licit" if label == 0 else "Unknown"
                     patterns.append(f"   - Node {node}: Degree {degree} ({label_str})")
-            
-            output = "🔍 ANOMALOUS PATTERNS DETECTED\n"
+
+            output = "ANOMALOUS PATTERNS DETECTED\n"
             output += "=" * 50 + "\n\n"
             output += "\n".join(patterns) if patterns else "No significant anomalous patterns detected."
             
@@ -314,8 +314,8 @@ Results:
             try:
                 return tool_map[tool_name](**kwargs)
             except Exception as e:
-                return f"❌ Error calling tool {tool_name}: {str(e)}"
-        return f"❌ Tool {tool_name} not found"
+                return f"Error calling tool {tool_name}: {str(e)}"
+        return f"Tool {tool_name} not found."
     
     # Tool implementations for fallback mode
     def _get_fraud_stats_impl(self, query: str = "") -> str:
@@ -327,7 +327,7 @@ Results:
         unknown = sum(1 for l in labels if l == -1)
         
         output = f"""
-📊 FRAUD STATISTICS
+FRAUD STATISTICS
 ================================
 Total Transactions: {total:,}
 ├── Licit: {licit:,} ({licit/total*100:.1f}%)
@@ -371,7 +371,7 @@ Fraud Rate (of labeled): {(illicit/(licit+illicit)*100):.1f}%
             results.sort(key=lambda x: x['fraud_probability'], reverse=True)
             top_results = results[:n]
             
-            output = f"🔍 TOP {n} MOST SUSPICIOUS TRANSACTIONS\n"
+            output = f"TOP {n} MOST SUSPICIOUS TRANSACTIONS\n"
             output += "=" * 50 + "\n\n"
             
             if not top_results:
@@ -379,7 +379,7 @@ Fraud Rate (of labeled): {(illicit/(licit+illicit)*100):.1f}%
             else:
                 for i, result in enumerate(top_results, 1):
                     prob = result['fraud_probability'] * 100
-                    risk_level = "🔴 HIGH" if prob > 80 else "🟡 MEDIUM" if prob > 50 else "🟢 LOW"
+                    risk_level = "HIGH" if prob > 80 else "MEDIUM" if prob > 50 else "LOW"
                     output += f"{i}. Transaction ID: {result['node_id']}\n"
                     output += f"   Fraud Probability: {prob:.1f}%\n"
                     output += f"   Risk Level: {risk_level}\n\n"
@@ -401,7 +401,7 @@ Fraud Rate (of labeled): {(illicit/(licit+illicit)*100):.1f}%
         isolates = nx.number_of_isolates(G)
         
         output = f"""
-🌐 NETWORK ANALYSIS
+NETWORK ANALYSIS
 ================================
 
 Basic Statistics:
@@ -423,11 +423,11 @@ Degree Distribution:
             node_id = node_id.strip()
             
             if node_id not in self.G:
-                return f"❌ Transaction ID {node_id} not found in the dataset"
+                return f"Transaction ID {node_id} not found in the dataset."
             
             node_data = self.G.nodes[node_id]
             if 'features' not in node_data:
-                return f"❌ Node {node_id} has no features"
+                return f"Node {node_id} has no features."
             
             features = node_data['features']
             label = node_data.get('label', -1)
@@ -441,10 +441,10 @@ Degree Distribution:
                 prob = torch.sigmoid(output).squeeze().item()
             
             actual = "LICIT" if label == 0 else "ILLICIT" if label == 1 else "UNKNOWN"
-            risk_level = "🔴 HIGH" if prob > 0.8 else "🟡 MEDIUM" if prob > 0.5 else "🟢 LOW"
+            risk_level = "HIGH" if prob > 0.8 else "MEDIUM" if prob > 0.5 else "LOW"
             
             output = f"""
-🎯 TRANSACTION FRAUD ANALYSIS
+TRANSACTION FRAUD ANALYSIS
 ================================
 
 Transaction ID: {node_id}
@@ -453,12 +453,12 @@ Fraud Probability: {prob:.1%}
 Risk Level: {risk_level}
 
 Recommendation:
-{'🚨 BLOCK' if prob > 0.8 else '⚠️ REVIEW' if prob > 0.5 else '✅ APPROVE'}
+{'BLOCK' if prob > 0.8 else 'REVIEW' if prob > 0.5 else 'APPROVE'}
 """
             return output
         
         except Exception as e:
-            return f"❌ Error analyzing transaction: {str(e)}"
+            return f"Error analyzing transaction: {str(e)}"
     
     def _run_risk_analysis_impl(self, n_transactions: int = 10000, fraud_rate: float = 0.02, avg_loss: float = 5000) -> str:
         """Run risk analysis implementation"""
@@ -473,7 +473,7 @@ Recommendation:
             )
             
             output = f"""
-💰 QUANTITATIVE RISK ANALYSIS
+QUANTITATIVE RISK ANALYSIS
 ================================
 
 Parameters:
@@ -490,7 +490,7 @@ Results:
             return output
         
         except Exception as e:
-            return f"❌ Error running risk analysis: {str(e)}"
+            return f"Error running risk analysis: {str(e)}"
     
     def _get_anomalous_patterns_impl(self, query: str = "") -> str:
         """Get anomalous patterns implementation"""
@@ -503,13 +503,13 @@ Results:
         top_hubs = degrees[:5]
         
         if top_hubs:
-            patterns.append("🏢 High-Degree Hubs:")
+            patterns.append("High-Degree Hubs:")
             for node, degree in top_hubs:
                 label = G.nodes[node].get('label', -1)
-                label_str = "🔴 Illicit" if label == 1 else "🟢 Licit" if label == 0 else "❓ Unknown"
+                label_str = "Illicit" if label == 1 else "Licit" if label == 0 else "Unknown"
                 patterns.append(f"   - Node {node}: Degree {degree} ({label_str})")
-        
-        output = "🔍 ANOMALOUS PATTERNS DETECTED\n"
+
+        output = "ANOMALOUS PATTERNS DETECTED\n"
         output += "=" * 50 + "\n\n"
         output += "\n".join(patterns) if patterns else "No significant anomalous patterns detected."
         
@@ -575,4 +575,4 @@ Results:
             response = self.agent.invoke({"messages": [HumanMessage(content=question)]})
             return response['messages'][-1].content
         except Exception as e:
-            return f"❌ Error processing question: {str(e)}"
+            return f"Error processing question: {str(e)}"

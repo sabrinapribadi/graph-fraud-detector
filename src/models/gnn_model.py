@@ -438,7 +438,7 @@ if __name__ == "__main__":
     # Evaluate
     metrics = detector.evaluate(data)
     
-    print(f"\n✅ Model trained and evaluated!")
+    print("\nModel trained and evaluated.")
     print(f"  - AUC: {metrics['auc']:.4f}")
     print(f"  - F1: {metrics['f1']:.4f}")
     print(f"  - Accuracy: {metrics['accuracy']:.4f}")
