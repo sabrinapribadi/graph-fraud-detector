@@ -1988,15 +1988,20 @@ with tab11:
                     st.session_state["perf_n_periods"]    = _n_per11
                     st.session_state["perf_tpr_series"]   = _raa11._returns.tolist() if _raa11._returns is not None else []
                     st.session_state["perf_bench_series"] = _raa11._benchmark_returns.tolist() if _raa11._benchmark_returns is not None else []
+                    # Update running max per metric for min-max radar normalisation
+                    _prev_max = st.session_state.get("perf_max_ever", {})
+                    st.session_state["perf_max_ever"] = {
+                        "sharpe":  max(_prev_max.get("sharpe",  0), _rpt11["sharpe"]["sharpe_ratio"]),
+                        "sortino": max(_prev_max.get("sortino", 0), _rpt11["sortino"]["sortino_ratio"]),
+                        "ir":      max(_prev_max.get("ir",      0), _rpt11["information"]["information_ratio"]),
+                        "calmar":  max(_prev_max.get("calmar",  0), _rpt11["calmar"]["calmar_ratio"]),
+                    }
                 except Exception as _e11:
                     st.error(f"Performance metrics error: {_e11}")
 
     _pr11     = st.session_state.get("perf_results")
     _tpr_s11  = np.array(st.session_state.get("perf_tpr_series",   []))
     _bench_s11 = np.array(st.session_state.get("perf_bench_series", []))
-
-    import math as _math11
-    def _lnorm11(v, ceil): return min(1.0, _math11.log1p(max(v, 0)) / _math11.log1p(ceil))
 
     if _pr11:
         # ── FINANCE VIEW ──────────────────────────────────────────────────────
@@ -2013,16 +2018,26 @@ with tab11:
 
             ra1, ra2 = st.columns(2)
             with ra1:
-                st.markdown("**Performance Radar**")
                 _sh11  = _pr11["sharpe"]["sharpe_ratio"]
                 _so11  = _pr11["sortino"]["sortino_ratio"]
                 _ir11v = _pr11["information"]["information_ratio"]
                 _ca11  = _pr11["calmar"]["calmar_ratio"]
+
+                _radar_hdr1, _radar_hdr2 = st.columns([3, 1])
+                with _radar_hdr1:
+                    st.markdown("**Performance Radar**")
+                with _radar_hdr2:
+                    if st.button("Reset baseline", key="perf_reset11", help="Clear stored max values to restart comparison"):
+                        st.session_state.pop("perf_max_ever", None)
+                        st.rerun()
+
+                # Min-max normalisation: axis = current / max_ever_seen (0 = min, 1 = best run)
+                _maxes = st.session_state.get("perf_max_ever", {})
                 _rv11  = [
-                    round(_lnorm11(_sh11,  500),  4),
-                    round(_lnorm11(_so11,  5000), 4),
-                    round(_lnorm11(_ir11v, 200),  4),
-                    round(_lnorm11(_ca11,  1000), 4),
+                    round(min(1.0, _sh11  / max(_maxes.get("sharpe",  _sh11),  1e-9)), 4),
+                    round(min(1.0, _so11  / max(_maxes.get("sortino", _so11),  1e-9)), 4),
+                    round(min(1.0, _ir11v / max(_maxes.get("ir",      _ir11v), 1e-9)), 4),
+                    round(min(1.0, _ca11  / max(_maxes.get("calmar",  _ca11),  1e-9)), 4),
                 ]
                 _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
                 _rdf11 = go.Figure(go.Scatterpolar(
@@ -2036,9 +2051,9 @@ with tab11:
                 ))
                 st.plotly_chart(_rdf11, use_container_width=True)
                 st.caption(
-                    "Log-scaled against finance ceilings (Sharpe 500, Sortino 5000, IR 200, Calmar 1000). "
-                    "Larger shape = stronger risk-adjusted return. Sortino > Sharpe = model fails gracefully. "
-                    "Shape grows with n_periods because ratios scale with √n."
+                    "Each axis = current value ÷ best run so far (1.0 = your highest recorded value). "
+                    "Run Compute at different n_periods to see the shape grow or shrink. "
+                    "Click **Reset baseline** to restart comparison from scratch."
                 )
 
             with ra2:
