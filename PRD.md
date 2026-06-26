@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.7 (Radar Dual-Perspective Toggle)
+Version: 3.8 (Performance Tab Finance/DS Full-Page Split, Annualisation Fix)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -299,6 +299,16 @@ Module H: Streamlit Dashboard (14-tab)
      shape reflects relative ratio strength without saturating) and "ML Metrics" (Avg TPR,
      Consistency, Floor, vs Benchmark — natural [0,1] from raw TPR series, changes with n_periods).
      Both perspectives share the same polar chart; captions adapt to the selected view.
+- H.29 Performance tab full-page Finance/DS split: "View as" radio at top of tab controls entire
+     content. Finance User view: Sharpe/Sortino/IR/Calmar metric cards, Finance radar, TPR series,
+     drawdown, interpretation. Data Scientist view: Mean/Std/Floor/vs-Benchmark metric cards,
+     ML radar (green), TPR histogram, active return distribution histogram.
+- H.30 Risk-adjusted metrics annualisation fix: all four ratio methods previously hardcoded
+     np.sqrt(_ANNUALISATION) = sqrt(49) = 7.0 as a constant multiplier, making ratios insensitive
+     to the n_periods slider (only sample count changed, not the multiplier). Fixed: replaced
+     _ANNUALISATION with n_periods in all annualisation calculations (rf_per_period, np.sqrt,
+     ann_return). Ratios now scale with sqrt(n_periods) so Finance radar shape changes visibly
+     across slider positions (n=10 → Sharpe≈142; n=49 → Sharpe≈315).
 
 Module I: Phase 6 — Advanced Quant Finance
 
@@ -535,6 +545,9 @@ Render Services:
 |        |          | Dockerfile.api COPY raw data line removed (Render build fix)      |           |
 | 20     | 1 day    | Radar dual-perspective toggle: Finance Metrics (log-scale          | Completed |
 |        |          | Sharpe/Sortino/IR/Calmar) + ML Metrics (TPR-derived axes)         |           |
+| 21     | 1 day    | Performance tab full-page Finance/DS split (page-level toggle);   | Completed |
+|        |          | annualisation fix (np.sqrt(n_periods) instead of fixed sqrt(49)); |           |
+|        |          | DS view: TPR histogram + active return distribution               |           |
 
 
 10. TESTING STRATEGY

@@ -117,12 +117,15 @@ class RiskAdjustedAnalyzer:
     # ── Public metrics ─────────────────────────────────────────────────────────
 
     def sharpe_ratio(self, n_periods: int = 49) -> Dict[str, float]:
-        """(mean_TPR - risk_free) / std_TPR  annualised."""
+        """(mean_TPR - risk_free) / std_TPR  annualised over n_periods."""
         r = self._build_return_series(n_periods)
-        rf_per_period = _RISK_FREE_RATE / _ANNUALISATION
+        # Annualise per-period risk-free rate and multiplier using n_periods so the
+        # ratio scales with the sample size — makes the metric visibly sensitive to the
+        # time-periods slider instead of always using the fixed 49-step constant.
+        rf_per_period = _RISK_FREE_RATE / n_periods
         excess = r - rf_per_period
         std = np.std(excess, ddof=1)
-        sharpe = (np.mean(excess) / std * np.sqrt(_ANNUALISATION)) if std > 0 else 0.0
+        sharpe = (np.mean(excess) / std * np.sqrt(n_periods)) if std > 0 else 0.0
         return {
             "sharpe_ratio":     round(float(sharpe), 4),
             "mean_tpr":         round(float(np.mean(r)), 4),
@@ -140,18 +143,18 @@ class RiskAdjustedAnalyzer:
         that occasionally dip below the target but rarely miss badly.
         """
         r = self._build_return_series(n_periods)
-        rf_per_period = _RISK_FREE_RATE / _ANNUALISATION
+        rf_per_period = _RISK_FREE_RATE / n_periods
         excess = r - rf_per_period
         # Semi-deviation: only returns BELOW the risk-free threshold contribute
         downside_sq = np.where(excess < 0, excess ** 2, 0.0)
         downside_std = float(np.sqrt(np.mean(downside_sq)))
         if downside_std < 1e-9:
             # No periods fell below rf — model always beats target; cap at 5× Sharpe
-            sharpe_r = (np.mean(excess) / np.std(excess, ddof=1) * np.sqrt(_ANNUALISATION)
+            sharpe_r = (np.mean(excess) / np.std(excess, ddof=1) * np.sqrt(n_periods)
                         if np.std(excess, ddof=1) > 0 else 0.0)
             sortino = min(sharpe_r * 5, 9999.0)
         else:
-            sortino = float(np.mean(excess) / downside_std * np.sqrt(_ANNUALISATION))
+            sortino = float(np.mean(excess) / downside_std * np.sqrt(n_periods))
         fn_rates = 1.0 - r
         return {
             "sortino_ratio":    round(float(sortino), 4),
@@ -168,7 +171,7 @@ class RiskAdjustedAnalyzer:
         bm  = self._build_benchmark_series(n_periods)
         active = r - bm
         te = np.std(active, ddof=1)
-        ir = (np.mean(active) / te * np.sqrt(_ANNUALISATION)) if te > 0 else 0.0
+        ir = (np.mean(active) / te * np.sqrt(n_periods)) if te > 0 else 0.0
         return {
             "information_ratio": round(float(ir), 4),
             "mean_active_return": round(float(np.mean(active)), 4),
@@ -187,7 +190,7 @@ class RiskAdjustedAnalyzer:
         running_max = np.maximum.accumulate(cumulative)
         drawdowns = (running_max - cumulative) / running_max
         max_dd = float(np.max(drawdowns)) if drawdowns.max() > 0 else 1e-9
-        ann_return = float(np.mean(r)) * _ANNUALISATION
+        ann_return = float(np.mean(r)) * n_periods
         calmar = ann_return / max_dd if max_dd > 0 else 0.0
         return {
             "calmar_ratio":     round(float(calmar), 4),
