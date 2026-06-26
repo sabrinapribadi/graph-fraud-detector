@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.6 (Radar Natural Axes, Dockerfile.api Raw-Data Fix)
+Version: 3.7 (Radar Dual-Perspective Toggle)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -294,6 +294,11 @@ Module H: Streamlit Dashboard (14-tab)
 - H.27 Dockerfile.api COPY raw data removed: line 25 (`COPY data/raw/elliptic_bitcoin_dataset/`)
      caused build failure on Render because raw CSVs are not committed. `COPY . .` on the
      following line already includes data/processed/ parquet files; raw line deleted.
+- H.28 Performance radar dual-perspective toggle: radio button switches between "Finance Metrics"
+     (Sharpe, Sortino, IR, Calmar — log-scaled against ceilings of 500/5000/200/1000 so the
+     shape reflects relative ratio strength without saturating) and "ML Metrics" (Avg TPR,
+     Consistency, Floor, vs Benchmark — natural [0,1] from raw TPR series, changes with n_periods).
+     Both perspectives share the same polar chart; captions adapt to the selected view.
 
 Module I: Phase 6 — Advanced Quant Finance
 
@@ -528,6 +533,8 @@ Render Services:
 |        |          | Performance radar relative normalisation (shape now varies)       |           |
 | 19     | 1 day    | Radar natural axes (Avg TPR/Consistency/Floor/vs Benchmark);      | Completed |
 |        |          | Dockerfile.api COPY raw data line removed (Render build fix)      |           |
+| 20     | 1 day    | Radar dual-perspective toggle: Finance Metrics (log-scale          | Completed |
+|        |          | Sharpe/Sortino/IR/Calmar) + ML Metrics (TPR-derived axes)         |           |
 
 
 10. TESTING STRATEGY

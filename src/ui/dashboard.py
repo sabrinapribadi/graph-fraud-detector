@@ -1998,25 +1998,60 @@ with tab11:
         ra1, ra2 = st.columns(2)
         with ra1:
             st.markdown("**Performance Radar**")
-            # Use natural [0,1] axes derived from the raw TPR series so the
-            # shape actually changes when n_periods changes (ratio axes don't
-            # change because Sharpe/Sortino/IR/Calmar all scale with √n)
+            _radar_view11 = st.radio(
+                "Perspective",
+                ["Finance Metrics", "ML Metrics"],
+                horizontal=True,
+                key="perf_radar_view11",
+                help="Finance: Sharpe/Sortino/IR/Calmar (log-scaled). ML: TPR-based axes that change visibly with n_periods.",
+            )
+
             _tpr_s11   = np.array(st.session_state.get("perf_tpr_series",   []))
             _bench_s11 = np.array(st.session_state.get("perf_bench_series", []))
-            if len(_tpr_s11) > 0:
-                _tpr_mean11  = float(_tpr_s11.mean())
-                _tpr_std11   = float(_tpr_s11.std(ddof=1)) if len(_tpr_s11) > 1 else 0.02
-                _tpr_floor11 = float(_tpr_s11.min())
-                _bench_m11   = float(_bench_s11.mean()) if len(_bench_s11) > 0 else 0.25
-                _rv11 = [
-                    round(_tpr_mean11, 4),
-                    round(max(0.0, 1.0 - _tpr_std11 * 15), 4),
-                    round(_tpr_floor11, 4),
-                    round(min(1.0, max(0.0, _tpr_mean11 - _bench_m11)), 4),
+
+            if _radar_view11 == "Finance Metrics":
+                # Log-scale normalization so shape reflects relative ratio strength
+                # (linear scale always saturates because all ratios are 100-1000×)
+                import math as _math11
+                def _lnorm11(v, ceil): return min(1.0, _math11.log1p(max(v, 0)) / _math11.log1p(ceil))
+                _sh11  = _pr11["sharpe"]["sharpe_ratio"]
+                _so11  = _pr11["sortino"]["sortino_ratio"]
+                _ir11v = _pr11["information"]["information_ratio"]
+                _ca11  = _pr11["calmar"]["calmar_ratio"]
+                _rv11  = [
+                    round(_lnorm11(_sh11,  500),  4),
+                    round(_lnorm11(_so11,  5000), 4),
+                    round(_lnorm11(_ir11v, 200),  4),
+                    round(_lnorm11(_ca11,  1000), 4),
                 ]
+                _rc11   = ["Sharpe", "Sortino", "IR", "Calmar"]
+                _cap11  = (
+                    "Log-scaled to [0,1] against finance benchmarks (Sharpe ceiling 500, "
+                    "Sortino 5000, IR 200, Calmar 1000). A larger shape = stronger risk-adjusted return. "
+                    "Sortino above Sharpe means upside variability exceeds downside — the model fails gracefully."
+                )
             else:
-                _rv11 = [0.5, 0.5, 0.5, 0.5]
-            _rc11 = ["Avg TPR", "Consistency", "Floor", "vs Benchmark"]
+                # Natural [0,1] axes derived from raw TPR series — change visibly with n_periods
+                if len(_tpr_s11) > 0:
+                    _tpr_mean11  = float(_tpr_s11.mean())
+                    _tpr_std11   = float(_tpr_s11.std(ddof=1)) if len(_tpr_s11) > 1 else 0.02
+                    _tpr_floor11 = float(_tpr_s11.min())
+                    _bench_m11   = float(_bench_s11.mean()) if len(_bench_s11) > 0 else 0.25
+                    _rv11 = [
+                        round(_tpr_mean11, 4),
+                        round(max(0.0, 1.0 - _tpr_std11 * 15), 4),
+                        round(_tpr_floor11, 4),
+                        round(min(1.0, max(0.0, _tpr_mean11 - _bench_m11)), 4),
+                    ]
+                else:
+                    _rv11 = [0.5, 0.5, 0.5, 0.5]
+                _rc11  = ["Avg TPR", "Consistency", "Floor", "vs Benchmark"]
+                _cap11 = (
+                    "Avg TPR = mean detection rate; Consistency = 1 − 15×std (higher = stabler); "
+                    "Floor = worst single period TPR; vs Benchmark = outperformance over degree-threshold baseline. "
+                    "All axes are natural [0,1] — shape changes when n_periods changes."
+                )
+
             _rdf11 = go.Figure(go.Scatterpolar(
                 r=_rv11 + [_rv11[0]],
                 theta=_rc11 + [_rc11[0]],
@@ -2031,11 +2066,7 @@ with tab11:
                 margin=dict(l=40, r=40, t=40, b=40),
             ))
             st.plotly_chart(_rdf11, use_container_width=True)
-            st.caption(
-                "Avg TPR = mean detection rate; Consistency = 1 − 15×std (higher = stabler); "
-                "Floor = worst single period; vs Benchmark = outperformance over degree-threshold baseline. "
-                "Sortino above Sharpe means the model fails gracefully — upside variability exceeds downside."
-            )
+            st.caption(_cap11)
 
         with ra2:
             st.markdown("**TPR Series vs Benchmark**")
