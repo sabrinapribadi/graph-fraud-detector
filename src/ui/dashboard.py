@@ -2044,29 +2044,30 @@ with tab11:
             ra1, ra2 = st.columns(2)
             with ra1:
                 _sh11  = _pr11["sharpe"]["sharpe_ratio"]
-                _so11  = _pr11["sortino"]["sortino_ratio"]
-                _ir11v = _pr11["information"]["information_ratio"]
                 _ca11  = _pr11["calmar"]["calmar_ratio"]
 
-                st.markdown("**Performance Radar** — position within n=10 → n=49 range")
+                st.markdown("**Performance Radar**")
 
-                # Min-max normalisation using analytically-derived [n=10, n=49] range.
-                # Sharpe/Sortino/IR scale with √n; Calmar scales linearly.
-                # 0.0 = performance at n=10, 1.0 = performance at n=49.
-                import math as _m11b
-                def _rng_norm11(v, key):
-                    _rng = st.session_state.get("perf_range", {}).get(key)
-                    if not _rng or _rng[1] <= _rng[0]:
-                        return 1.0
-                    return max(0.0, min(1.0, (v - _rng[0]) / (_rng[1] - _rng[0])))
+                # Four axes chosen to have genuinely different values:
+                #   Sharpe  — scales with √n (sqrt growth as n increases)
+                #   Calmar  — scales linearly with n (faster growth than Sharpe)
+                #   AUC     — inherent model quality, stable regardless of n
+                #   Detect  — Detection Rate (Recall), stable regardless of n
+                # Sharpe and Calmar are normalised by their n=49 maximum (stored in
+                # perf_range[key][1]), so 1.0 = the value you'd get at n=49.
+                _rng11 = st.session_state.get("perf_range", {})
+                _sh_max = _rng11.get("sharpe",  [0, max(_sh11, 1e-9)])[1]
+                _ca_max = _rng11.get("calmar",  [0, max(_ca11, 1e-9)])[1]
+                _auc11  = _mtr11.get("auc",    0.0)
+                _dr11   = _mtr11.get("recall", _pr11["sharpe"]["mean_tpr"])
 
-                _rv11  = [
-                    round(_rng_norm11(_sh11,  "sharpe"),  4),
-                    round(_rng_norm11(_so11,  "sortino"), 4),
-                    round(_rng_norm11(_ir11v, "ir"),      4),
-                    round(_rng_norm11(_ca11,  "calmar"),  4),
+                _rv11 = [
+                    round(min(1.0, _sh11 / max(_sh_max, 1e-9)), 4),  # √n growth
+                    round(min(1.0, _ca11 / max(_ca_max, 1e-9)), 4),  # linear growth
+                    round(float(_auc11), 4),                           # stable
+                    round(float(_dr11),  4),                           # stable
                 ]
-                _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
+                _rc11 = ["Sharpe", "Calmar", "AUC", "Detection Rate"]
                 _rdf11 = go.Figure(go.Scatterpolar(
                     r=_rv11 + [_rv11[0]], theta=_rc11 + [_rc11[0]],
                     fill="toself", fillcolor=_to_rgba("#4A90D9", 0.25),
@@ -2079,9 +2080,9 @@ with tab11:
                 st.plotly_chart(_rdf11, use_container_width=True)
                 _n_stored = st.session_state.get("perf_n_periods", "?")
                 st.caption(
-                    f"0.0 = metric at n=10 (minimum), 1.0 = metric at n=49 (maximum). "
-                    f"Current n={_n_stored}. Slide to n=10 → small shape; slide to n=49 → full shape. "
-                    f"Shape is consistent across runs — derived from the scaling law, not accumulated history."
+                    f"**Sharpe & Calmar** (left/bottom) = ratio at n={_n_stored} ÷ max at n=49 — "
+                    f"these grow as you increase n (Calmar grows faster because it scales linearly). "
+                    f"**AUC & Detection Rate** (right/top) = inherent model quality, fixed regardless of n."
                 )
 
             with ra2:
@@ -2132,10 +2133,34 @@ with tab11:
                 "Spikes indicate consecutive bad detection periods."
             )
 
-            if _pr11.get("interpretation"):
-                st.markdown("**Interpretation**")
-                for _int11 in _pr11["interpretation"]:
-                    st.markdown(f"- {_int11}")
+            st.markdown("**Interpretation**")
+            _interp11 = list(_pr11.get("interpretation", []))
+            # Append live business-quality bullets from model metrics
+            _auc_v11 = _mtr11.get("auc", 0.0)
+            _rec_v11 = _mtr11.get("recall", 0.0)
+            _pre_v11 = _mtr11.get("precision", 0.0)
+            _f1_v11  = _mtr11.get("f1", 0.0)
+            if _auc_v11 > 0:
+                if _auc_v11 >= 0.95:
+                    _interp11.append(f"AUC {_auc_v11:.3f}: excellent ranking confidence — model reliably separates fraud from legitimate transactions.")
+                elif _auc_v11 >= 0.80:
+                    _interp11.append(f"AUC {_auc_v11:.3f}: good ranking confidence, but review borderline alerts manually.")
+                else:
+                    _interp11.append(f"AUC {_auc_v11:.3f}: moderate confidence — consider retraining with optimised parameters.")
+            if _rec_v11 > 0:
+                if _rec_v11 >= 0.90:
+                    _interp11.append(f"Detection Rate {_rec_v11:.1%}: catching >90% of actual fraud — strong coverage.")
+                elif _rec_v11 >= 0.75:
+                    _interp11.append(f"Detection Rate {_rec_v11:.1%}: acceptable but some fraud is slipping through — tune threshold.")
+                else:
+                    _interp11.append(f"Detection Rate {_rec_v11:.1%}: high miss-rate; prioritise recall improvement over precision.")
+            if _pre_v11 > 0:
+                if _pre_v11 >= 0.85:
+                    _interp11.append(f"Alert Accuracy {_pre_v11:.1%}: alerts are highly reliable — investigators see mostly real fraud.")
+                else:
+                    _interp11.append(f"Alert Accuracy {_pre_v11:.1%}: notable false-alert rate — triage queue before investigation.")
+            for _int11 in _interp11:
+                st.markdown(f"- {_int11}")
 
         # ── DATA SCIENTIST VIEW ───────────────────────────────────────────────
         else:
