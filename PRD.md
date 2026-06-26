@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 3.4 (Web Search Fallback, Chart Captions, AI Label Temporal, Stale Metrics Warning, Prophet)
+Version: 3.5 (Temporal Bug Fix, Web Search Google Fallback, Radar Relative Normalization)
 Author: Sabrina Pribadi
 Date: June 26, 2026
 Status: Completed
@@ -280,6 +280,15 @@ Module H: Streamlit Dashboard (14-tab)
      state; shows an info callout when the slider value differs from the stored value, prompting
      the user to click Compute Metrics to refresh.
 - H.23 Prophet added to pyproject.toml (>=1.1). duckduckgo-search (>=6.0) also added.
+- H.24 Temporal Analysis bug fix: analysis results stored in st.session_state["temporal_results"]
+     so they persist across re-runs triggered by the radio toggle. Radio + chart rendering moved
+     outside the button-click block; _cd8 NameError eliminated.
+- H.25 Knowledge Base web fallback: DuckDuckGo attempted first; on any failure (ImportError or
+     network error) falls back to a Google search link built with urllib.parse.quote — always
+     works without an extra library.
+- H.26 Performance radar relative normalisation: axes scaled to max(raw_values) instead of fixed
+     divisors (3/5/2/10), so the shape shows which metric dominates and changes meaningfully
+     across different n_periods runs. Caption updated.
 
 Module I: Phase 6 — Advanced Quant Finance
 
@@ -508,7 +517,10 @@ Render Services:
 |        |          | GraphSAGE aggregator explainer (mean vs sum vs max table)         |           |
 | 17     | 1 day    | UX: chart captions on all major charts; Knowledge Base DuckDuckGo | Completed |
 |        |          | web search fallback; Temporal AI-Predicted Labels toggle;        |           |
-|        |          | Performance stale-data warning; prophet + duckduckgo-search added |           ||
+|        |          | Performance stale-data warning; prophet + duckduckgo-search added |           |
+| 18     | 1 day    | Bug fixes: Temporal _cd8 NameError (session_state persistence);   | Completed |
+|        |          | Knowledge Base Google link fallback when DuckDuckGo unavailable; |           |
+|        |          | Performance radar relative normalisation (shape now varies)       |           |
 
 
 10. TESTING STRATEGY
