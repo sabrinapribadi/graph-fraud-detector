@@ -1530,110 +1530,126 @@ with tab8:
 
     _ta_btn8 = st.button(":material/play_arrow: Run Temporal Analysis", type="primary", key="ta8")
 
+    # Run analysis and store results in session_state so the radio toggle
+    # doesn't lose them on re-run (Streamlit re-runs on every widget interaction)
     if _ta_btn8 and _G8 is not None:
         with st.spinner("Running temporal analysis..."):
             try:
                 from src.analytics.temporal_analysis import TemporalAnalyzer
-                _ta8      = TemporalAnalyzer(_G8, _md8)
-                _sum8     = _ta8.get_activity_summary()
-                _vel8     = _ta8.analyze_transaction_velocity()
-                _pat8     = _ta8.analyze_time_patterns()
-                _trn8     = _ta8.analyze_fraud_trends()
-                _ano8     = _ta8.detect_temporal_anomalies(top_n=20)
-
-                tc1, tc2, tc3 = st.columns(3)
-                tc1.metric("Total Nodes", f"{_sum8['total_nodes']:,}")
-                tc2.metric("Avg Degree",  f"{_sum8['avg_degree']:.2f}")
-                tc3.metric("Max Degree",  f"{_sum8['max_degree']:,}")
-
-                st.markdown("**Class Distribution by Activity Band**")
-                _label_view8 = st.radio(
-                    "View",
-                    ["Ground Truth Labels", "AI-Predicted Labels"],
-                    horizontal=True, key="ta_label_view8",
-                )
-
-                if _label_view8 == "AI-Predicted Labels" and _md8 is not None:
-                    _det8 = st.session_state.get("detector")
-                    if _det8 is not None:
-                        try:
-                            _det8.model.eval()
-                            with torch.no_grad():
-                                _xp8 = torch.FloatTensor(_md8["features"]).to(_det8.device)
-                                _ap8 = torch.eye(len(_md8["features"])).to(_det8.device)
-                                _op8 = _det8.model(_xp8, _ap8)
-                                _pp8 = torch.sigmoid(_op8).squeeze().cpu().numpy()
-                            if _pp8.ndim == 0:
-                                _pp8 = np.array([float(_pp8)])
-                            _pred_ill8  = int(np.sum(_pp8 >= 0.5))
-                            _pred_lit8  = int(np.sum(_pp8 < 0.5))
-                            _scale8     = _G8.number_of_nodes() / max(len(_pp8), 1)
-                            _cd8_ai = {
-                                "illicit": int(_pred_ill8 * _scale8),
-                                "licit":   int(_pred_lit8 * _scale8),
-                                "unknown": 0,
-                            }
-                            st.caption(
-                                f"AI-predicted: ~{_cd8_ai['illicit']:,} illicit ({_cd8_ai['illicit']/_G8.number_of_nodes()*100:.1f}%), "
-                                f"~{_cd8_ai['licit']:,} licit ({_cd8_ai['licit']/_G8.number_of_nodes()*100:.1f}%)"
-                            )
-                        except Exception:
-                            _cd8_ai = _cd8
-                    else:
-                        _cd8_ai = _cd8
-                    _cd8_plot = _cd8_ai
-                else:
-                    _cd8_plot = _cd8
-
-                _cdf8 = go.Figure()
-                for _cls8, _col8 in [("illicit", "#FF5A5F"), ("licit", "#00CC96"), ("unknown", "#888")]:
-                    if _cd8_plot.get(_cls8, 0) > 0:
-                        _cdf8.add_trace(go.Bar(
-                            name=_cls8.capitalize(),
-                            x=[_cls8.capitalize()],
-                            y=[_cd8_plot[_cls8]],
-                            marker_color=_col8,
-                        ))
-                _cdf8.update_layout(**_dark_layout(
-                    height=260,
-                    barmode="group",
-                    yaxis=dict(title="Node Count", color="#888"),
-                    xaxis=dict(color="#888"),
-                    margin=dict(l=40, r=20, t=30, b=40),
-                ))
-                st.plotly_chart(_cdf8, use_container_width=True)
-                st.caption(
-                    "Bar height = total nodes in each class. Switch to 'AI-Predicted Labels' to see "
-                    "the model's classification across all 203k nodes, including those without ground-truth labels."
-                )
-
-                st.markdown("**Velocity Percentiles**")
-                _vp8  = _vel8["velocity_distribution"]["percentiles"]
-                _vpdf8 = pd.DataFrame([{"Percentile": k, "Degree": round(v, 1)} for k, v in _vp8.items()])
-                st.dataframe(_vpdf8, use_container_width=True, hide_index=True)
-
-                if _ano8:
-                    st.markdown("**Z-Score Anomaly Table** (|z| > 2.5)")
-                    _andf8 = pd.DataFrame([{
-                        "Node":    str(a["node"]),
-                        "Degree":  a["degree"],
-                        "Z-Score": round(a["z_score"], 2),
-                        "Label":   a["label"],
-                        "Type":    a["type"],
-                    } for a in _ano8])
-                    st.dataframe(_andf8, use_container_width=True, hide_index=True)
-
-                _rpt8 = _ta8.generate_temporal_report()
-                st.download_button(
-                    ":material/download: Download Report",
-                    data=_rpt8.encode("utf-8"),
-                    file_name="temporal_analysis_report.txt",
-                    mime="text/plain",
-                )
+                _ta8  = TemporalAnalyzer(_G8, _md8)
+                _ta_results8 = {
+                    "sum": _ta8.get_activity_summary(),
+                    "vel": _ta8.analyze_transaction_velocity(),
+                    "trn": _ta8.analyze_fraud_trends(),
+                    "ano": _ta8.detect_temporal_anomalies(top_n=20),
+                    "rpt": _ta8.generate_temporal_report(),
+                }
+                st.session_state["temporal_results"] = _ta_results8
             except Exception as _e8:
                 st.error(f"Temporal analysis failed: {_e8}")
     elif _ta_btn8 and _G8 is None:
         st.info("Load data first.")
+
+    # Render persisted results (survives the radio-toggle re-run)
+    _tr8 = st.session_state.get("temporal_results")
+    if _tr8:
+        _sum8 = _tr8["sum"]
+        _vel8 = _tr8["vel"]
+        _trn8 = _tr8["trn"]
+        _ano8 = _tr8["ano"]
+        _rpt8 = _tr8["rpt"]
+
+        tc1, tc2, tc3 = st.columns(3)
+        tc1.metric("Total Nodes", f"{_sum8['total_nodes']:,}")
+        tc2.metric("Avg Degree",  f"{_sum8['avg_degree']:.2f}")
+        tc3.metric("Max Degree",  f"{_sum8['max_degree']:,}")
+
+        st.markdown("**Class Distribution by Activity Band**")
+        _label_view8 = st.radio(
+            "View",
+            ["Ground Truth Labels", "AI-Predicted Labels"],
+            horizontal=True, key="ta_label_view8",
+        )
+
+        _cd8 = _trn8["class_distribution"]
+
+        if _label_view8 == "AI-Predicted Labels" and _md8 is not None:
+            _det8 = st.session_state.get("detector")
+            if _det8 is not None:
+                try:
+                    _det8.model.eval()
+                    with torch.no_grad():
+                        _xp8 = torch.FloatTensor(_md8["features"]).to(_det8.device)
+                        _ap8 = torch.eye(len(_md8["features"])).to(_det8.device)
+                        _op8 = _det8.model(_xp8, _ap8)
+                        _pp8 = torch.sigmoid(_op8).squeeze().cpu().numpy()
+                    if _pp8.ndim == 0:
+                        _pp8 = np.array([float(_pp8)])
+                    _pred_ill8 = int(np.sum(_pp8 >= 0.5))
+                    _pred_lit8 = int(np.sum(_pp8 < 0.5))
+                    _scale8    = _G8.number_of_nodes() / max(len(_pp8), 1)
+                    _cd8_plot  = {
+                        "illicit": int(_pred_ill8 * _scale8),
+                        "licit":   int(_pred_lit8 * _scale8),
+                        "unknown": 0,
+                    }
+                    st.caption(
+                        f"AI-predicted: ~{_cd8_plot['illicit']:,} illicit "
+                        f"({_cd8_plot['illicit']/_G8.number_of_nodes()*100:.1f}%), "
+                        f"~{_cd8_plot['licit']:,} licit "
+                        f"({_cd8_plot['licit']/_G8.number_of_nodes()*100:.1f}%)"
+                    )
+                except Exception:
+                    _cd8_plot = _cd8
+            else:
+                _cd8_plot = _cd8
+        else:
+            _cd8_plot = _cd8
+
+        _cdf8 = go.Figure()
+        for _cls8, _col8 in [("illicit", "#FF5A5F"), ("licit", "#00CC96"), ("unknown", "#888")]:
+            if _cd8_plot.get(_cls8, 0) > 0:
+                _cdf8.add_trace(go.Bar(
+                    name=_cls8.capitalize(),
+                    x=[_cls8.capitalize()],
+                    y=[_cd8_plot[_cls8]],
+                    marker_color=_col8,
+                ))
+        _cdf8.update_layout(**_dark_layout(
+            height=260,
+            barmode="group",
+            yaxis=dict(title="Node Count", color="#888"),
+            xaxis=dict(color="#888"),
+            margin=dict(l=40, r=20, t=30, b=40),
+        ))
+        st.plotly_chart(_cdf8, use_container_width=True)
+        st.caption(
+            "Bar height = total nodes in each class. Switch to 'AI-Predicted Labels' to compare "
+            "model predictions against the ground-truth distribution, including unlabeled nodes."
+        )
+
+        st.markdown("**Velocity Percentiles**")
+        _vp8  = _vel8["velocity_distribution"]["percentiles"]
+        _vpdf8 = pd.DataFrame([{"Percentile": k, "Degree": round(v, 1)} for k, v in _vp8.items()])
+        st.dataframe(_vpdf8, use_container_width=True, hide_index=True)
+
+        if _ano8:
+            st.markdown("**Z-Score Anomaly Table** (|z| > 2.5)")
+            _andf8 = pd.DataFrame([{
+                "Node":    str(a["node"]),
+                "Degree":  a["degree"],
+                "Z-Score": round(a["z_score"], 2),
+                "Label":   a["label"],
+                "Type":    a["type"],
+            } for a in _ano8])
+            st.dataframe(_andf8, use_container_width=True, hide_index=True)
+
+        st.download_button(
+            ":material/download: Download Report",
+            data=_rpt8.encode("utf-8"),
+            file_name="temporal_analysis_report.txt",
+            mime="text/plain",
+        )
 
     _biz_box(
         "Is fraud getting worse over time?",
@@ -1717,15 +1733,15 @@ with tab9:
 
                 # ── Web search fallback ───────────────────────────────────────
                 if _no_result9:
+                    import urllib.parse as _up9
+                    _search_query9 = f"{_eff_q9} fraud detection finance"
                     st.markdown("---")
                     st.markdown("**Not found in knowledge base — web results:**")
+                    _ddg_ok9 = False
                     try:
                         from duckduckgo_search import DDGS
                         with DDGS() as _ddgs9:
-                            _web_results9 = list(_ddgs9.text(
-                                f"{_eff_q9} fraud detection finance",
-                                max_results=4,
-                            ))
+                            _web_results9 = list(_ddgs9.text(_search_query9, max_results=4))
                         if _web_results9:
                             for _wr9 in _web_results9:
                                 with st.expander(_wr9.get("title", "Result")):
@@ -1733,15 +1749,15 @@ with tab9:
                                     _url9 = _wr9.get("href", "")
                                     if _url9:
                                         st.markdown(f"[Open in browser]({_url9})")
-                        else:
-                            st.info("No web results found.")
-                    except ImportError:
-                        st.info(
-                            "Install `duckduckgo-search` (`pip install duckduckgo-search`) "
-                            "to enable web search fallback."
+                            _ddg_ok9 = True
+                    except Exception:
+                        pass
+                    if not _ddg_ok9:
+                        _g_url9 = "https://www.google.com/search?q=" + _up9.quote(_search_query9)
+                        st.markdown(
+                            f"Search the web for: **{_eff_q9}**\n\n"
+                            f"[Open Google search]({_g_url9})"
                         )
-                    except Exception as _we9:
-                        st.warning(f"Web search unavailable: {_we9}")
 
                 st.session_state["rag_current_query"] = ""
             except Exception as _e9:
@@ -1979,12 +1995,16 @@ with tab11:
         ra1, ra2 = st.columns(2)
         with ra1:
             st.markdown("**Performance Radar**")
-            _rv11 = [
-                min(_pr11["sharpe"]["sharpe_ratio"]      / 3,  1),
-                min(_pr11["sortino"]["sortino_ratio"]     / 5,  1),
-                min(_pr11["information"]["information_ratio"] / 2, 1),
-                min(_pr11["calmar"]["calmar_ratio"]       / 10, 1),
+            # Normalise relative to the largest ratio so the shape shows
+            # which metric is proportionally strongest for this n_periods run
+            _raw11 = [
+                max(_pr11["sharpe"]["sharpe_ratio"],      0),
+                max(_pr11["sortino"]["sortino_ratio"],     0),
+                max(_pr11["information"]["information_ratio"], 0),
+                max(_pr11["calmar"]["calmar_ratio"],       0),
             ]
+            _rmax11 = max(_raw11) or 1.0
+            _rv11 = [v / _rmax11 for v in _raw11]
             _rc11 = ["Sharpe", "Sortino", "IR", "Calmar"]
             _rdf11 = go.Figure(go.Scatterpolar(
                 r=_rv11 + [_rv11[0]],
@@ -2001,7 +2021,7 @@ with tab11:
             ))
             st.plotly_chart(_rdf11, use_container_width=True)
             st.caption(
-                "Each axis is normalised to [0,1]. A larger shape = strong performance on all four dimensions. "
+                "Axes show each ratio relative to the strongest one — the shape reveals which metric dominates. "
                 "Sortino above Sharpe means the model fails gracefully — upside variability exceeds downside."
             )
 

@@ -32,15 +32,15 @@ REST service — designed so non-finance users can interpret every result in pla
 | **Data Explorer** | Can I filter and export specific transactions? | Filterable node table with label and degree filters; degree distribution chart; CSV export |
 | **Auto-Discovery** | What fraud patterns should I worry about right now? | Proactively detects 5 fraud pattern types with severity badges and Plotly charts |
 | **Advanced ML** | Can the model explain why it flagged a transaction? | Optuna hyperparameter tuning + **Apply button to retrain with best params**; GAT + GraphSAGE ensemble; gradient-based attribution as horizontal bar chart (red = raises risk, blue = lowers) |
-| **Temporal Analysis** | Is fraud getting worse over time? | Class distribution with Ground Truth / AI-Predicted Labels toggle; velocity percentiles; z-score anomaly table; downloadable report |
-| **Knowledge Base** | Can I look up a fraud term or concept? | RAG search over 25 curated documents; ChromaDB + OpenAI with TF-IDF fallback; DuckDuckGo web search fallback when knowledge base has no match |
+| **Temporal Analysis** | Is fraud getting worse over time? | Class distribution with Ground Truth / AI-Predicted Labels toggle (results persist across toggle re-runs); velocity percentiles; z-score anomaly table; downloadable report |
+| **Knowledge Base** | Can I look up a fraud term or concept? | RAG search over 25 curated documents; ChromaDB + OpenAI with TF-IDF fallback; DuckDuckGo web search fallback (falls back to Google search link if library unavailable) |
 
 ### Phase 6 — Advanced Quant Finance (Tabs 10–14)
 
 | Dashboard Tab | Business Question | What it does |
 |--------------|-------------------|-------------|
 | **Stress Testing** | What if there's a financial crisis? | 5 named crisis scenarios (2008, COVID-19, Crypto Winter, etc.); Monte Carlo × 5,000 per scenario; severity ratio vs baseline; loss distribution overlay; KDE heatmap |
-| **Risk-Adjusted Metrics** | Is our fraud detector worth the investment? | Sharpe, Sortino, Information Ratio, Calmar — bootstrapped over 49 pseudo-periods; radar scorecard; TPR series vs naive benchmark; drawdown chart |
+| **Risk-Adjusted Metrics** | Is our fraud detector worth the investment? | Sharpe, Sortino, Information Ratio, Calmar — bootstrapped over 49 pseudo-periods; radar scorecard (relative normalisation — shape shows which metric dominates); TPR series vs naive benchmark; drawdown chart |
 | **Loss Forecasting** | How much should we budget for fraud? | Prophet (with Holt-Winters fallback) fraud-loss forecast over 49 bi-weekly steps (Jan 2011–Jan 2013); 80% confidence intervals; trend direction; per-period budget estimate |
 | **Regulatory Capital** | How much money do we need in reserve? | Basel III Standardised Approach vs IRB Vasicek formula at 99.9% confidence; rho and PD sensitivity curves; SA vs IRB capital saving |
 | **Contagion Score** | If we miss one fraudster, how many others are at risk? | Stochastic SIR diffusion; Composite Risk = fraud_prob × (1 + log(1 + mean_at_risk)); ranked scatter; top investigation targets |
