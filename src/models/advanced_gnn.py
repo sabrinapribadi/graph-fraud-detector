@@ -16,6 +16,8 @@ from typing import Dict, Any, List, Optional, Tuple
 import logging
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 
+from src.models.gnn_model import GraphSAGE
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -103,83 +105,6 @@ class GAT(nn.Module):
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.batch_norm(x)
         x = self.out_att(x, adj)
-        return x
-
-class GraphSAGE(nn.Module):
-    """
-    GraphSAGE with different aggregators (mean and sum only)
-    """
-    def __init__(
-        self,
-        in_features: int,
-        hidden_dim: int = 64,
-        out_features: int = 1,
-        num_layers: int = 2,
-        dropout: float = 0.3,
-        aggregator: str = 'mean'
-    ):
-        super().__init__()
-        
-        self.num_layers = num_layers
-        self.dropout = dropout
-        self.aggregator = aggregator
-        
-        # Input layer
-        self.input_layer = nn.Linear(in_features, hidden_dim)
-        
-        # Hidden layers
-        self.hidden_layers = nn.ModuleList([
-            nn.Linear(hidden_dim, hidden_dim) for _ in range(num_layers - 1)
-        ])
-        
-        # Output layer
-        self.output_layer = nn.Linear(hidden_dim, out_features)
-        
-        # Batch normalization
-        self.batch_norms = nn.ModuleList([
-            nn.BatchNorm1d(hidden_dim) for _ in range(num_layers - 1)
-        ])
-        
-        self.dropout_layer = nn.Dropout(dropout)
-    
-    def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass with message passing (mean and sum only)
-        """
-        # Compute degrees for aggregation
-        degrees = adj.sum(dim=1, keepdim=True)
-        degrees = torch.clamp(degrees, min=1.0)
-        
-        # Message passing - only mean and sum
-        if self.aggregator == 'mean':
-            aggr = adj @ x / degrees
-        elif self.aggregator == 'sum':
-            aggr = adj @ x
-        else:
-            raise ValueError(f"Unknown aggregator: {self.aggregator}. Use 'mean' or 'sum'.")
-        
-        # Combine self and neighbors
-        x = 0.5 * x + 0.5 * aggr
-        
-        # Input layer
-        x = self.input_layer(x)
-        x = F.relu(x)
-        x = self.dropout_layer(x)
-        
-        # Hidden layers
-        for i, (layer, bn) in enumerate(zip(self.hidden_layers, self.batch_norms)):
-            residual = x
-            x = layer(x)
-            x = bn(x)
-            x = F.relu(x)
-            x = self.dropout_layer(x)
-            
-            # Skip connection
-            if i < len(self.hidden_layers) - 1:
-                x = x + residual
-        
-        # Output
-        x = self.output_layer(x)
         return x
 
 class EnsembleFraudDetector:

@@ -1,8 +1,8 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 4.0 (Finance Radar Analytical Range, Business Quality Cards)
+Version: 5.0 (Code Quality, 9-Tool Agent, Conversation History, Unit Tests)
 Author: Sabrina Pribadi
-Date: June 26, 2026
+Date: July 1, 2026
 Status: Completed
 
 
@@ -32,7 +32,7 @@ golden-ratio UI/UX, and MLOps deployment practices in a single cohesive portfoli
 
 Success Metrics:
 - GNN model achieves AUC > 0.95 on the Elliptic held-out test set
-- AI agent answers 6 standard test questions with correct statistics
+- AI agent answers questions across all 9 tools with correct statistics
 - RAG knowledge base retrieves relevant documents for 5+ question types
 - Dashboard loads in under 3 seconds on first visit
 - All 5 auto-discovery insight types surface without user prompting
@@ -47,8 +47,8 @@ This project was built as a portfolio piece to demonstrate capabilities across:
 1. Graph Machine Learning: Training GraphSAGE and GAT on a real financial fraud dataset.
 2. Quantitative Risk Analysis: Implementing Monte Carlo simulation, VaR, TVM adjustments,
    stress testing, risk-adjusted metrics, loss forecasting, regulatory capital, and contagion.
-3. LLM and Agentic Design: Building a LangChain agent with 6 domain-specific tools and a
-   fallback mode that works without an API key.
+3. LLM and Agentic Design: Building a LangChain agent with 9 domain-specific tools, multi-turn
+   conversation history, follow-up suggestions, and a fallback mode that works without an API key.
 4. RAG Engineering: Designing a ChromaDB + OpenAI embedding pipeline with TF-IDF fallback,
    a static knowledge base of 25 fraud domain documents, and dynamic insight ingestion.
 5. Software Engineering: Modular, testable Python codebase with separation of concerns across
@@ -82,7 +82,7 @@ In-Scope:
     - Fraud Contagion Score: Stochastic SIR diffusion; Composite Risk Score
 - Business Translation Layer: Green Business Question panel + amber Plain English callout on all
   14 tabs; help= tooltip text on all technical parameter inputs
-- LLM Agent: LangChain agent with 6 tools; offline fallback mode
+- LLM Agent: LangChain agent with 9 tools; multi-turn conversation history; follow-up suggestions; offline fallback mode
 - RAG Knowledge Base: 25 domain documents, ChromaDB vector store, TF-IDF fallback,
   OpenAI GPT-4o-mini synthesis
 - Auto-Discovery: 5 proactive fraud pattern detection methods
@@ -168,12 +168,23 @@ Module C: Core Quantitative Risk Analysis
 
 Module D: LLM Agent (FraudAgent)
 - D.1 Framework: LangChain with LangGraph v1.3.
-- D.2 Tools: 6 tools — get_fraud_stats, find_suspicious_nodes, analyze_network,
-     predict_transaction, run_risk_analysis, get_anomalous_patterns.
+- D.2 Tools: 9 tools — get_fraud_stats, find_suspicious_nodes, analyze_network,
+     predict_transaction, run_risk_analysis, get_anomalous_patterns,
+     analyze_temporal_trends (wraps TemporalAnalyzer), forecast_fraud_losses (wraps
+     LossForecaster), explain_node_features (gradient-based attribution via ModelExplainer).
 - D.3 Model: GPT-4o-mini.
 - D.4 Fallback: When no API key is configured, all tool implementations run directly via
-     rule-based routing (keyword matching on the question).
-- D.5 Output format: Professional plain-text with ASCII-style headers; no emoji in outputs.
+     rule-based routing (keyword matching on the question). Keywords handled: risk/monte,
+     temporal/trend/velocity, forecast/budget/future, explain/why/feature, statistic,
+     suspicious/top, network/structure, predict/transaction, anomal/pattern.
+- D.5 Conversation history: LLM path accumulates HumanMessage/AIMessage objects in
+     self.conversation_history and passes the full history on each invoke() call, enabling
+     multi-turn follow-up questions without losing context.
+- D.6 Follow-up suggestions: Every mock-mode response appends 3 context-aware "Related
+     questions" based on which tool was invoked, defined in module-level _FOLLOWUPS dict.
+- D.7 Tool architecture: @tool wrappers in _create_tools() are thin 3-line delegates to
+     _*_impl() instance methods — single source of truth, no duplicated logic.
+- D.8 Output format: Professional plain-text with ASCII-style headers; no emoji in outputs.
 
 Module E: RAG Knowledge Base (FraudRAGAgent)
 - E.1 Knowledge base: 25 curated documents covering fraud typologies, GNN architecture,
@@ -189,6 +200,9 @@ Module E: RAG Knowledge Base (FraudRAGAgent)
 - E.7 Index build: scripts/build_fraud_index.py. Estimated cost: ~$0.01 one-time.
 - E.8 UI: 9th dashboard tab with 6 preset questions, free-text search, synthesised answer,
      and source document cards showing similarity scores.
+- E.9 Caching: FraudRAGAgent stored in st.session_state["_rag_agent"] and reused across
+     searches. update_with_insights() called only when discovery insights change, avoiding
+     ChromaDB re-initialisation on every search button click.
 
 Module F: Auto-Discovery (AutoDiscovery)
 - F.1 Method 1 — Money Laundering Rings: Nodes with degree > 10 and > 50% illicit neighbours.
@@ -468,7 +482,7 @@ Render Services:
 +────────+──────+  +───────────+──────+  +──────────────────────────+──────────+
 | FraudAgent    |  | FraudRAGAgent    |  | Analytics Layer                      |
 | LangChain     |  | ChromaDB /       |  | RiskAnalyzer / AutoDiscovery         |
-| 6 tools       |  | TF-IDF           |  | TemporalAnalyzer / ModelExplainer    |
+| 9 tools       |  | TF-IDF           |  | TemporalAnalyzer / ModelExplainer    |
 +────────+──────+  +──────────────────+  | StressTester / RiskAdjustedAnalyzer  |
          |                               | LossForecaster / RegCapCalculator    |
          |                               | ContagionAnalyzer                    |
@@ -555,12 +569,46 @@ Render Services:
 |        |          | Finance view row 2: Fraud Catch Rate / Alert Accuracy / Ranking   |           |
 |        |          | Confidence / F1 from stored model_metrics (business language);    |           |
 |        |          | model_metrics now stored on startup and on Apply retraining       |           |
+| 24     | 0.5 days | Finance radar axes fix: honest normalization with per-metric       | Completed |
+|        |          | ceilings; dynamic interpretation callout using all 8 stored       |           |
+|        |          | metrics; Finance/DS view row 2 business quality cards             |           |
+| 25     | 0.5 days | Radar reverted to Sharpe/Sortino/IR/Calmar with honest per-metric | Completed |
+|        |          | normalization (current / ceiling); API OOM fix: pre-computed      |           |
+|        |          | cache baked into Docker build; runtime loads weights + JSON only  |           |
+| 26     | 1 day    | Code quality, robustness, 9-tool agent, unit tests:               | Completed |
+|        |          | - bare except → except ValueError + pre-call class check in       |           |
+|        |          |   gnn_model.py and hyperparameter_optimization.py                 |           |
+|        |          | - preprocess_data.py: upfront existence check for all 3 raw CSVs  |           |
+|        |          | - GraphSAGE deduplication: canonical class in gnn_model.py;       |           |
+|        |          |   duplicate removed from advanced_gnn.py; aggregate → aggregator  |           |
+|        |          |   param renamed across all 3 call sites                           |           |
+|        |          | - tests/test_gnn_model.py: 10 unit tests (forward pass, balanced  |           |
+|        |          |   classes, empty-graph guard, train/test split, single-class AUC, |           |
+|        |          |   preprocess file-existence guard)                                |           |
+|        |          | - FraudAgent: removed ~170 lines of duplicated tool closures;      |           |
+|        |          |   @tool wrappers now delegate to _*_impl() single source of truth |           |
+|        |          | - 3 new agent tools: analyze_temporal_trends, forecast_fraud_losses|           |
+|        |          |   explain_node_features (wrapping TemporalAnalyzer, LossForecaster|           |
+|        |          |   ModelExplainer — previously unused analytics modules)           |           |
+|        |          | - Conversation history: LangChain path accumulates HumanMessage / |           |
+|        |          |   AIMessage objects; full history passed on each invoke()          |           |
+|        |          | - Follow-up suggestions: _FOLLOWUPS dict appends 3 related        |           |
+|        |          |   questions to every mock-mode response                           |           |
+|        |          | - RAG agent cached in session_state["_rag_agent"]; update_with_   |           |
+|        |          |   insights() called only on change; avoids ChromaDB reload on     |           |
+|        |          |   every search click                                              |           |
+|        |          | - Dashboard badge updated: "6 Analytical Tools" → "9 Analytical  |           |
+|        |          |   Tools"                                                          |           |
 
 
 10. TESTING STRATEGY
 
-- Unit Tests: Data loading functions, label mapping, graph construction.
-- Integration Tests: Agent tools tested via scripts/test_agent.py with 6 standard questions.
+- Unit Tests: tests/test_gnn_model.py — 10 pytest tests covering GraphSAGE forward pass
+  (mean/sum aggregator, shape, NaN guard, unknown aggregator error), FraudDetector.build_graph_data
+  (required keys, balanced classes, empty-graph ValueError, 80/20 split), evaluate() single-class
+  AUC guard, and preprocess_data.py file-existence guard. All tests use synthetic graphs; no
+  real dataset required.
+- Integration Tests: Agent tools tested via scripts/test_agent.py with 9 question types.
 - Manual QA: All 14 dashboard tabs tested on Python 3.12, macOS + MPS.
 - Phase 6 QA: All 5 analytics modules verified with synthetic data; fallback paths tested
   (Holt-Winters triggered when Prophet not installed; label-proxy used when model unavailable).
@@ -610,6 +658,21 @@ Render Services:
 | git filter-repo wiped working tree| filter-repo removed origin remote and reset working tree to  | Resolved |
 |   (un-committed dashboard lost)   | committed state, destroying 2 sessions of un-committed edits.|          |
 |                                   | Fix: all dashboard files are now committed after each session |          |
+| Bare except swallowed all errors  | evaluate() used except: which hides KeyboardInterrupt and    | Resolved |
+|   including KeyboardInterrupt     | returns nan (not 0.0) in newer sklearn. Fixed: pre-call      |          |
+|                                   | unique-class check + except ValueError in gnn_model.py and   |          |
+|                                   | hyperparameter_optimization.py                               |          |
+| Duplicate GraphSAGE class caused  | GraphSAGE defined in both gnn_model.py and advanced_gnn.py  | Resolved |
+|   maintenance divergence          | with different param names (aggregate vs aggregator) and     |          |
+|                                   | different skip-connection behaviour. Canonical class kept in |          |
+|                                   | gnn_model.py; advanced_gnn.py imports it. Param renamed to   |          |
+|                                   | aggregator across all call sites.                            |          |
+| Tool logic duplicated ~170 lines  | Every @tool closure in _create_tools() was a verbatim copy   | Resolved |
+|   in FraudAgent                   | of the corresponding _*_impl() method. Closures replaced     |          |
+|                                   | with 3-line delegates; _*_impl() is single source of truth.  |          |
+| RAG agent re-initialised on every | FraudRAGAgent() created fresh each search, reloading ChromaDB| Resolved |
+|   knowledge base search           | on every button click. Now cached in session_state and       |          |
+|                                   | update_with_insights() called only when insights change.     |          |
 
 
 12. SUCCESS CRITERIA
@@ -620,7 +683,7 @@ Model performance (all achieved):
 - Accuracy >= 88% (achieved: 89.0%)
 
 Functional requirements (all achieved):
-- LangChain agent answers 6 test questions with correct statistics
+- LangChain agent handles all 9 tool categories with correct statistics
 - Monte Carlo simulation runs in under 10 seconds for 10,000 iterations
 - 5 auto-discovery insight types surface without user input
 - RAG returns relevant source documents for 5+ question types
@@ -670,6 +733,7 @@ Code quality requirements (all achieved):
   Winters loss forecast, Basel III SA + IRB Vasicek regulatory capital, SIR contagion score
 - RAG Stack: ChromaDB cosine similarity, text-embedding-3-small 256-dim, 25 knowledge docs
 - Agent Tools: get_fraud_stats, find_suspicious_nodes, analyze_network, predict_transaction,
-  run_risk_analysis, get_anomalous_patterns
+  run_risk_analysis, get_anomalous_patterns, analyze_temporal_trends, forecast_fraud_losses,
+  explain_node_features
 - Discovery Methods: Money Laundering Rings, Structuring, Rapid Chains, Mixed Signals, Outliers
 - Business Translation: _biz_box() green panels + _plain_english() amber callouts on all 14 tabs

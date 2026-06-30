@@ -27,19 +27,19 @@ class GraphSAGE(nn.Module):
     GraphSAGE-inspired GNN for node classification
     """
     def __init__(
-        self, 
-        in_features: int, 
-        hidden_dim: int = 64,  # Reduced from 128
+        self,
+        in_features: int,
+        hidden_dim: int = 64,
         out_features: int = 1,
-        num_layers: int = 2,   # Reduced from 3
+        num_layers: int = 2,
         dropout: float = 0.3,
-        aggregate: str = 'mean'
+        aggregator: str = 'mean'
     ):
         super().__init__()
-        
+
         self.num_layers = num_layers
         self.dropout = dropout
-        self.aggregate = aggregate
+        self.aggregator = aggregator
         
         # Input projection
         self.input_proj = nn.Linear(in_features, hidden_dim)
@@ -67,12 +67,12 @@ class GraphSAGE(nn.Module):
         degrees = torch.clamp(degrees, min=1.0)
         
         # Aggregate neighbor features
-        if self.aggregate == 'mean':
+        if self.aggregator == 'mean':
             aggr = adj_matrix @ x / degrees
-        elif self.aggregate == 'sum':
+        elif self.aggregator == 'sum':
             aggr = adj_matrix @ x
         else:
-            raise ValueError(f"Unknown aggregation: {self.aggregate}")
+            raise ValueError(f"Unknown aggregator: {self.aggregator}. Use 'mean' or 'sum'.")
         
         # Combine self and neighbor features
         x = 0.5 * x + 0.5 * aggr
@@ -333,15 +333,21 @@ class FraudDetector:
             y_score = preds.cpu().numpy()
             
             # AUC
-            try:
-                auc = roc_auc_score(y_true, y_score)
-            except:
+            if len(np.unique(y_true)) < 2:
+                logger.warning("AUC undefined: test set contains only one class. Defaulting to 0.0.")
                 auc = 0.0
-            
+            else:
+                try:
+                    auc = roc_auc_score(y_true, y_score)
+                except ValueError as e:
+                    logger.warning(f"AUC calculation failed: {e}")
+                    auc = 0.0
+
             # F1
             try:
                 f1 = f1_score(y_true, y_pred, zero_division=0)
-            except:
+            except ValueError as e:
+                logger.warning(f"F1 calculation failed: {e}")
                 f1 = 0.0
             
             # Confusion matrix

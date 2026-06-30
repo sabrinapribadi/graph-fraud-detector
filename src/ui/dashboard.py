@@ -956,7 +956,7 @@ with tab2:
 
 with tab3:
     st.markdown(
-        '<div class="context-box">LangChain-powered conversational agent with 6 analytical tools '
+        '<div class="context-box">LangChain-powered conversational agent with 9 analytical tools '
         'over the live graph. Falls back to direct tool calls when no OpenAI key is configured.</div>',
         unsafe_allow_html=True,
     )
@@ -972,7 +972,7 @@ with tab3:
         <span style="background:#1a2a3a;border:1px solid #4A90D9;padding:3px 10px;border-radius:12px;
               font-size:0.78rem;color:#4A90D9;">&#9889; LangChain Agent</span>
         <span style="background:#1a2a3a;border:1px solid #FFA726;padding:3px 10px;border-radius:12px;
-              font-size:0.78rem;color:#FFA726;">&#128296; 6 Analytical Tools</span>
+              font-size:0.78rem;color:#FFA726;">&#128296; 9 Analytical Tools</span>
         <span style="background:#1a2a3a;border:1px solid #00CC96;padding:3px 10px;border-radius:12px;
               font-size:0.78rem;color:#00CC96;">&#128218; RAG &#x2192; Knowledge tab</span>
     </div>
@@ -1426,7 +1426,7 @@ In practice, training both and comparing AUC tells you which signal structure yo
                             _ed7 = FraudDetector(hidden_dim=64, num_layers=2, dropout=0.3)
                             _ed7.model = GraphSAGE(
                                 in_features=166, hidden_dim=64, out_features=1,
-                                num_layers=2, dropout=0.3, aggregate=_agg7,
+                                num_layers=2, dropout=0.3, aggregator=_agg7,
                             ).to(_ed7.device)
                             _edata7 = _ed7.build_graph_data(_G7, sample_size=2000, balance_classes=True)
                             _ed7.train(_edata7, epochs=50, early_stopping=15)
@@ -1712,7 +1712,14 @@ with tab9:
         with st.spinner("Searching knowledge base..."):
             try:
                 from src.agent.rag_agent import FraudRAGAgent
-                _rag9       = FraudRAGAgent(insights=st.session_state.get("discovery_insights", []))
+                # Cache the RAG agent in session state — loading ChromaDB on every search is slow
+                _insights9 = st.session_state.get("discovery_insights", [])
+                if "_rag_agent" not in st.session_state:
+                    st.session_state["_rag_agent"] = FraudRAGAgent(insights=_insights9)
+                elif _insights9 != st.session_state.get("_rag_agent_insights"):
+                    st.session_state["_rag_agent"].update_with_insights(_insights9)
+                    st.session_state["_rag_agent_insights"] = _insights9
+                _rag9 = st.session_state["_rag_agent"]
                 _rag_res9   = _rag9.answer(_eff_q9, n_results=5)
 
                 _rag_ans9 = _rag_res9.get("answer", "")

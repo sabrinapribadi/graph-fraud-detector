@@ -1,9 +1,10 @@
 # Graph Fraud Detector
 
 An end-to-end Graph Neural Network system for detecting fraudulent Bitcoin transactions,
-featuring quantitative risk analysis, a 14-tab interactive dashboard, a LangChain AI agent,
-RAG-powered fraud knowledge search, Phase 6 advanced quant-finance analytics, and a FastAPI
-REST service — designed so non-finance users can interpret every result in plain English.
+featuring quantitative risk analysis, a 14-tab interactive dashboard, a LangChain AI agent
+with 9 tools and multi-turn conversation history, RAG-powered fraud knowledge search,
+Phase 6 advanced quant-finance analytics, and a FastAPI REST service — designed so
+non-finance users can interpret every result in plain English.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector-dashboards.onrender.com)
 [![API](https://img.shields.io/badge/API-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://graph-fraud-detector-api-service.onrender.com/docs)
@@ -27,7 +28,7 @@ REST service — designed so non-finance users can interpret every result in pla
 |--------------|-------------------|-------------|
 | **Overview** | Are we catching the fraudsters? | AUC, fraud rate, dual donut (ground-truth labels + model-predicted classification for all 203k nodes), degree histogram, fraud probability histogram, top suspicious nodes table |
 | **Network Explorer** | Who are the most connected suspects? | Interactive Plotly graph; colour by label, degree, fraud probability, or **AI-Predicted Label** (model inference on subgraph with caution callout); network topology stats |
-| **AI Assistant** | Can I just ask questions in plain English? | LangChain agent with 6 analytical tools; native `st.chat_message()` bubbles; Plotly bar charts for statistics/suspect results; agent cached across messages; multiple questions via semicolons |
+| **AI Assistant** | Can I just ask questions in plain English? | LangChain agent with **9 analytical tools** (fraud stats, suspicious nodes, network analysis, transaction prediction, risk analysis, anomaly detection, temporal trends, loss forecast, feature explanation); multi-turn conversation history in LLM mode; follow-up suggestions after every response; native `st.chat_message()` bubbles; Plotly bar charts for statistics/suspect results; agent cached across messages; multiple questions via semicolons |
 | **Risk Analysis** | How much money could we lose? | Monte Carlo (10,000 scenarios); Expected Loss (PD × EAD × LGD); VaR 95%; Time Value of Money |
 | **Data Explorer** | Can I filter and export specific transactions? | Filterable node table with label and degree filters; degree distribution chart; CSV export |
 | **Auto-Discovery** | What fraud patterns should I worry about right now? | Proactively detects 5 fraud pattern types with severity badges and Plotly charts |
@@ -77,7 +78,7 @@ graph-fraud-detector/
 │   └── config.toml                  # Dark theme + coral accent
 ├── src/
 │   ├── agent/
-│   │   ├── fraud_agent.py           # LangChain Q&A agent (6 tools)
+│   │   ├── fraud_agent.py           # LangChain Q&A agent (9 tools, conversation history)
 │   │   └── rag_agent.py             # FraudRAGAgent: ChromaDB + OpenAI RAG
 │   ├── analytics/
 │   │   ├── risk_analysis.py         # Monte Carlo, TVM, Expected Loss
@@ -111,6 +112,7 @@ graph-fraud-detector/
 │   │   └── edgelist.parquet         # 234,355 directed edges         (2.1 MB)
 │   └── raw/                         # Not committed — place CSVs here only if re-generating parquet
 ├── tests/
+│   └── test_gnn_model.py            # 10 unit tests: GraphSAGE, FraudDetector, preprocess guard
 ├── Dockerfile                       # Dashboard container (port 8501)
 ├── Dockerfile.api                   # API container (port 8000)
 ├── render.yaml                      # Render deployment config
