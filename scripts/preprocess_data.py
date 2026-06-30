@@ -33,6 +33,19 @@ def _mb(path: Path) -> float:
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
+    required_files = [
+        "elliptic_txs_features.csv",
+        "elliptic_txs_classes.csv",
+        "elliptic_txs_edgelist.csv",
+    ]
+    missing = [f for f in required_files if not (RAW_DIR / f).exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"Missing raw data files in {RAW_DIR}:\n"
+            + "\n".join(f"  - {f}" for f in missing)
+            + "\nDownload the Elliptic Bitcoin Dataset from https://www.kaggle.com/ellipticco/elliptic-data-set"
+        )
+
     # ── Features ─────────────────────────────────────────────────────────────
     src = RAW_DIR / "elliptic_txs_features.csv"
     dst = PROCESSED_DIR / "features.parquet"

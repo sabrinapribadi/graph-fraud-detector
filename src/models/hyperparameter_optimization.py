@@ -77,7 +77,7 @@ class HyperparameterOptimizer:
             out_features=1,
             num_layers=num_layers,
             dropout=dropout,
-            aggregate=aggregator
+            aggregator=aggregator
         ).to(self.device)
         
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -120,7 +120,8 @@ class HyperparameterOptimizer:
                 # Calculate AUC
                 try:
                     auc = roc_auc_score(y_true, preds)
-                except:
+                except ValueError as e:
+                    logger.warning(f"AUC calculation failed in trial {trial.number}: {e}")
                     auc = 0.0
             else:
                 # Only one class - use accuracy instead
