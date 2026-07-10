@@ -1,10 +1,11 @@
 # Graph Fraud Detector
 
 An end-to-end Graph Neural Network system for detecting fraudulent Bitcoin transactions,
-featuring quantitative risk analysis, a 14-tab interactive dashboard, a LangChain AI agent
+featuring quantitative risk analysis, a 15-tab interactive dashboard, a LangChain AI agent
 with 9 tools and multi-turn conversation history, RAG-powered fraud knowledge search,
-Phase 6 advanced quant-finance analytics, and a FastAPI REST service — designed so
-non-finance users can interpret every result in plain English.
+Phase 6 advanced quant-finance analytics, a FastAPI REST service with MongoDB alert
+persistence, and a LinUCB contextual bandit for adaptive fraud threshold selection —
+designed so non-finance users can interpret every result in plain English.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector-dashboards.onrender.com)
 [![API](https://img.shields.io/badge/API-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://graph-fraud-detector-api-service.onrender.com/docs)
@@ -45,6 +46,12 @@ non-finance users can interpret every result in plain English.
 | **Loss Forecasting** | How much should we budget for fraud? | Prophet (with Holt-Winters fallback) fraud-loss forecast over 49 bi-weekly steps (Jan 2011–Jan 2013); 80% confidence intervals; trend direction; per-period budget estimate |
 | **Regulatory Capital** | How much money do we need in reserve? | Basel III Standardised Approach vs IRB Vasicek formula at 99.9% confidence; rho and PD sensitivity curves; SA vs IRB capital saving |
 | **Contagion Score** | If we miss one fraudster, how many others are at risk? | Stochastic SIR diffusion; Composite Risk = fraud_prob × (1 + log(1 + mean_at_risk)); ranked scatter; top investigation targets |
+
+### Phase 7 — RL Adaptive Threshold (Tab 15)
+
+| Dashboard Tab | Business Question | What it does |
+|--------------|-------------------|-------------|
+| **RL Threshold** | What fraud sensitivity should we set today? | LinUCB contextual bandit learns which probability threshold (τ ∈ {0.3, 0.5, 0.6, 0.7, 0.8}) minimises `FP_cost × FP_rate + FN_cost × FN_rate` given the temporal regime; trained on 49 Elliptic time steps with full-feedback offline updates; cumulative regret chart; arm selection pie; per-step threshold timeline; what-if predictor (5 sliders → recommended threshold + UCB score bar chart) |
 
 ### Business Translation Layer
 
@@ -90,15 +97,21 @@ graph-fraud-detector/
 │   │   ├── regulatory_capital.py    # Basel III SA + IRB Vasicek
 │   │   └── contagion.py             # SIR diffusion, Composite Risk Score
 │   ├── api/
-│   │   └── app.py                   # FastAPI REST service (8 endpoints)
+│   │   └── app.py                   # FastAPI REST service (10 endpoints incl. /alerts)
+│   ├── db/
+│   │   └── mongo.py                 # MongoDB Atlas singleton; fail-safe alert persistence
 │   ├── data/
 │   │   └── loader.py                # EllipticDataLoader: parquet-first load
 │   ├── models/
 │   │   ├── gnn_model.py             # GraphSAGE implementation
 │   │   ├── advanced_gnn.py          # GAT + Ensemble model
 │   │   └── hyperparameter_optimization.py  # Optuna tuner
+│   ├── rl/
+│   │   ├── bandit.py                # LinUCBBandit: ridge-regularised per-arm linear model
+│   │   ├── time_step_features.py    # 6 context features from 49 Elliptic time steps
+│   │   └── threshold_selector.py   # ThresholdBanditSelector: 5-arm offline training
 │   └── ui/
-│       └── dashboard.py             # Streamlit 14-tab dashboard
+│       └── dashboard.py             # Streamlit 15-tab dashboard
 ├── scripts/
 │   ├── preprocess_data.py           # Run once: CSVs → zstd parquet (690 MB → 87 MB)
 │   ├── build_fraud_index.py         # Run once: build ChromaDB RAG index

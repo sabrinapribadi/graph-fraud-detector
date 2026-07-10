@@ -24,6 +24,7 @@ from src.models.gnn_model import FraudDetector
 from src.analytics.risk_analysis import QuantitativeRiskAnalyzer
 from src.analytics.auto_discovery import AutoDiscovery
 from src.analytics.loss_forecasting import LossForecaster, PROPHET_AVAILABLE
+from src.rl.threshold_selector import ThresholdBanditSelector
 
 st.set_page_config(
     page_title="Graph Fraud Detector",
@@ -567,7 +568,7 @@ with st.sidebar:
 # ── Tab Layout ─────────────────────────────────────────────────────────────────
 
 (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9,
- tab10, tab11, tab12, tab13, tab14) = st.tabs([
+ tab10, tab11, tab12, tab13, tab14, tab15) = st.tabs([
     ":material/dashboard: Overview",
     ":material/hub: Network",
     ":material/smart_toy: AI Chat",
@@ -582,6 +583,7 @@ with st.sidebar:
     ":material/trending_up: Forecast",
     ":material/account_balance: Capital",
     ":material/coronavirus: Contagion",
+    ":material/tune: RL Threshold",
 ])
 
 
@@ -2680,3 +2682,214 @@ with tab14:
             "additional transactions that become suspicious if you miss this one node. "
             "Prioritise nodes with both high fraud probability AND high at-risk count."
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 15 — RL THRESHOLD SELECTOR
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(show_spinner=False)
+def _run_threshold_bandit(data_dir: str, alpha: float):
+    sel = ThresholdBanditSelector(data_dir=Path(data_dir), alpha=alpha)
+    return sel.train()
+
+
+_ARM_COLORS_RL = {
+    "τ=0.3": "#FF5A5F",
+    "τ=0.5": "#FFA726",
+    "τ=0.6": "#00CC96",
+    "τ=0.7": "#4A90D9",
+    "τ=0.8": "#9C27B0",
+}
+
+with tab15:
+    st.markdown("## RL Threshold Selector")
+    st.markdown(
+        "A **LinUCB contextual bandit** learns which fraud-probability threshold "
+        "(τ) minimises `FP_cost × FP_rate + FN_cost × FN_rate` given the "
+        "temporal regime. Trained offline on all 49 Elliptic time steps with "
+        "full-feedback updates (all 5 arm rewards observable per step)."
+    )
+
+    _col_a15, _col_b15 = st.columns([3, 1])
+    with _col_b15:
+        _alpha15 = st.slider(
+            "Exploration (α)", min_value=0.1, max_value=3.0,
+            value=1.0, step=0.1,
+            help="α=0 → pure exploitation; α=3 → heavy exploration",
+            key="rl15_alpha",
+        )
+        st.caption(f"FP cost = 1.0 · FN cost = 10.0")
+
+    with _col_a15:
+        with st.spinner("Training bandit…"):
+            _r15 = _run_threshold_bandit(str(project_root), _alpha15)
+
+    kpi = _r15["kpis"]
+
+    # ── KPI row ───────────────────────────────────────────────────────────────
+    _k1, _k2, _k3, _k4 = st.columns(4)
+    _k1.metric("Oracle avg reward",  f"{kpi['avg_oracle_reward']:.4f}", help="Upper bound — perfect hindsight")
+    _k2.metric("Bandit avg reward",  f"{kpi['avg_bandit_reward']:.4f}",
+               delta=f"{kpi['avg_bandit_reward'] - kpi['avg_random_reward']:+.4f} vs random")
+    _k3.metric("Static best avg",    f"{kpi['avg_static_reward']:.4f}",
+               help=f"Always use {_r15['static_best_label']}")
+    _k4.metric("vs Random",          f"+{kpi['pct_vs_random']:.1f}%",
+               help="Bandit reward improvement over uniform arm selection")
+
+    st.divider()
+
+    # ── Cumulative regret ─────────────────────────────────────────────────────
+    _fig_reg15 = go.Figure()
+    _fig_reg15.add_trace(go.Scatter(
+        x=_r15["time_steps"], y=_r15["cumul_regret_bandit"],
+        name="LinUCB Bandit", line=dict(color="#FFA726", width=2),
+    ))
+    _fig_reg15.add_trace(go.Scatter(
+        x=_r15["time_steps"], y=_r15["cumul_regret_static"],
+        name=f"Static Best ({_r15['static_best_label']})", line=dict(color="#00CC96", width=2, dash="dash"),
+    ))
+    _fig_reg15.add_trace(go.Scatter(
+        x=_r15["time_steps"], y=_r15["cumul_regret_random"],
+        name="Random", line=dict(color="#666", width=1, dash="dot"),
+    ))
+    _fig_reg15.update_layout(**_dark_layout(
+        height=280, title="Cumulative Regret vs Oracle",
+        xaxis=dict(title="Time Step", color="#888"),
+        yaxis=dict(title="Cumulative Regret", color="#888"),
+        legend=dict(orientation="h", y=1.12),
+        margin=dict(l=50, r=20, t=50, b=40),
+    ))
+    st.plotly_chart(_fig_reg15, use_container_width=True)
+    st.caption(
+        f"Bandit final regret: {kpi['final_regret_bandit']:.3f} vs "
+        f"static best: {kpi['final_regret_static']:.3f}. "
+        "The gap is the exploration cost in early steps before the bandit identifies τ=0.5 as dominant."
+    )
+
+    # ── Two-column: arm selection + per-step threshold ────────────────────────
+    _lc15, _rc15 = st.columns(2)
+
+    with _lc15:
+        st.markdown("**Arm Selection Distribution**")
+        _arm_labels_15 = list(_r15["arm_counts"].keys())
+        _arm_vals_15 = list(_r15["arm_counts"].values())
+        _arm_clrs_15 = [_ARM_COLORS_RL.get(a, "#888") for a in _arm_labels_15]
+        _fig_pie15 = go.Figure(go.Pie(
+            labels=_arm_labels_15, values=_arm_vals_15,
+            marker=dict(colors=_arm_clrs_15),
+            textinfo="label+percent", hole=0.38,
+        ))
+        _fig_pie15.update_layout(**_dark_layout(height=280, margin=dict(l=10, r=10, t=10, b=10)))
+        st.plotly_chart(_fig_pie15, use_container_width=True)
+
+    with _rc15:
+        st.markdown("**Selected vs Oracle Threshold per Step**")
+        _fig_ts15 = go.Figure()
+        _fig_ts15.add_trace(go.Scatter(
+            x=_r15["time_steps"], y=_r15["selected_thresholds"],
+            mode="markers+lines", name="Bandit",
+            marker=dict(color="#FFA726", size=6), line=dict(width=1),
+        ))
+        _fig_ts15.add_trace(go.Scatter(
+            x=_r15["time_steps"], y=_r15["oracle_thresholds"],
+            mode="markers", name="Oracle",
+            marker=dict(color="#00CC96", size=5, symbol="x"),
+        ))
+        _fig_ts15.update_layout(**_dark_layout(
+            height=280,
+            xaxis=dict(title="Time Step", color="#888"),
+            yaxis=dict(title="Threshold τ", color="#888", tickvals=_r15["thresholds"]),
+            legend=dict(orientation="h", y=1.12),
+            margin=dict(l=50, r=20, t=40, b=40),
+        ))
+        st.plotly_chart(_fig_ts15, use_container_width=True)
+
+    # ── Arm summary table ─────────────────────────────────────────────────────
+    st.markdown("**Arm Summary**")
+    _reward_mat15 = np.array(_r15["reward_matrix"])
+    _arm_summary15 = []
+    for _ai, _al in enumerate(_r15["arm_labels"]):
+        _arm_summary15.append({
+            "Threshold": _al,
+            "Steps Selected": _r15["arm_counts"][_al],
+            "% Selected": f"{_r15['arm_counts'][_al] / _r15['n_steps'] * 100:.1f}%",
+            "Avg Reward": f"{_reward_mat15[:, _ai].mean():.4f}",
+            "Avg FP Trade-off": "Aggressive (more catches)" if _ai == 0 else (
+                "Conservative (fewer alarms)" if _ai == 4 else "Balanced"
+            ),
+        })
+    st.dataframe(pd.DataFrame(_arm_summary15), use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── What-if predictor ─────────────────────────────────────────────────────
+    st.markdown("### What-if Predictor")
+    st.markdown(
+        "Adjust the regime context sliders to see which threshold the learned policy recommends. "
+        "Uses linear expected-reward scores (no UCB bonus — pure exploitation of learned weights)."
+    )
+
+    _feat_names_15 = _r15["feat_names"]
+    _feat_min_15 = _r15["feat_min"]
+    _feat_max_15 = _r15["feat_max"]
+    _feat_mean_15 = _r15["feat_mean"]
+
+    _wi_labels = {
+        "illicit_rate": "Illicit Rate (fraction of labeled nodes that are illicit)",
+        "labeled_fraction": "Labeled Fraction (labeled / total nodes)",
+        "tx_count_norm": "Volume (normalised transaction count)",
+        "illicit_velocity": "Illicit Velocity (Δillicit rate from prev step)",
+        "cumul_illicit_rate": "Cumulative Illicit Rate (expanding mean)",
+    }
+
+    _wi_cols = st.columns(len(_feat_names_15))
+    _wi_vals = []
+    for _ci, (_fn, _col) in enumerate(zip(_feat_names_15, _wi_cols)):
+        _lo = float(_feat_min_15[_ci])
+        _hi = float(_feat_max_15[_ci])
+        _mu = float(_feat_mean_15[_ci])
+        if abs(_hi - _lo) < 1e-6:
+            _hi = _lo + 0.01
+        _v = _col.slider(
+            _wi_labels.get(_fn, _fn),
+            min_value=round(_lo, 3), max_value=round(_hi, 3),
+            value=round(_mu, 3), step=round((_hi - _lo) / 50, 4),
+            key=f"rl15_feat_{_fn}",
+        )
+        _wi_vals.append(_v)
+
+    _wi_ctx = np.array(_wi_vals, dtype=np.float64)
+    _wi_weights = _r15["weights"]
+    _wi_ctx_full = np.append(_wi_ctx, 1.0)
+    _wi_scores = [float(np.array(w) @ _wi_ctx_full) for w in _wi_weights]
+    _wi_best = int(np.argmax(_wi_scores))
+
+    st.success(
+        f"**Recommended threshold: {_r15['arm_labels'][_wi_best]}** "
+        f"— expected reward score {_wi_scores[_wi_best]:.4f}"
+    )
+
+    _fig_wi15 = go.Figure(go.Bar(
+        x=_wi_scores, y=_r15["arm_labels"], orientation="h",
+        marker_color=[
+            _ARM_COLORS_RL.get(a, "#888") for a in _r15["arm_labels"]
+        ],
+    ))
+    _fig_wi15.update_layout(**_dark_layout(
+        height=200,
+        xaxis=dict(title="Expected Reward Score", color="#888"),
+        yaxis=dict(color="#888"),
+        margin=dict(l=60, r=20, t=20, b=40),
+    ))
+    st.plotly_chart(_fig_wi15, use_container_width=True)
+
+    _biz_box(
+        "Which fraud sensitivity should we set today?",
+        "A low threshold (τ=0.3) catches more fraud but floods analysts with false alarms. "
+        "A high threshold (τ=0.8) is precise but misses borderline cases. "
+        "The bandit learns from the temporal regime — high illicit velocity or rising illicit rate "
+        "signals a shift toward a more aggressive threshold to avoid costly misses. "
+        f"With FN cost 10× higher than FP cost, the policy converges to τ=0.5 "
+        "in stable regimes but explores lower thresholds during illicit surges."
+    )
