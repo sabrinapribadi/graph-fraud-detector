@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 6.0 (RL Threshold Bandit, MongoDB Alert Layer, 15-Tab Dashboard)
+Version: 7.0 (PostgreSQL Gold Layer, Medallion Architecture, 11-Endpoint API)
 Author: Sabrina Pribadi
 Date: July 10, 2026
 Status: Completed
@@ -613,6 +613,20 @@ Render Services:
 |        |          |   full-feedback sequential training; what-if predictor             |           |
 |        |          | - Tab 15 "RL Threshold" added: KPIs, cumulative regret chart,      |           |
 |        |          |   arm selection pie, per-step threshold timeline, what-if sliders  |           |
+| 28     | 1 day    | PostgreSQL (Supabase) gold layer — medallion architecture complete:| Completed |
+|        |          | - src/db/postgres.py: ThreadedConnectionPool (1–5) against Supabase|           |
+|        |          |   transaction-mode pooler (port 6543); fail-safe singleton with    |           |
+|        |          |   upsert_daily_alert (ON CONFLICT rolling average) and             |           |
+|        |          |   get_daily_summary; same try/except no-op pattern as mongo.py     |           |
+|        |          | - /predict now writes to both layers for HIGH/MEDIUM: mongo (raw   |           |
+|        |          |   event) + postgres (daily aggregate upsert)                       |           |
+|        |          | - GET /stats/daily endpoint: last N days from fraud_alert_daily    |           |
+|        |          |   gold table; ?days=30 default                                     |           |
+|        |          | - API version 1.0.0 → 1.1.0; endpoint count 10 → 11               |           |
+|        |          | - ADR-003 added; ADR index dependency graph updated                |           |
+|        |          | - pyproject.toml + requirements.txt: psycopg2-binary added         |           |
+|        |          | - Medallion: MongoDB Atlas (bronze/raw) → PostgreSQL Supabase      |           |
+|        |          |   (gold/daily aggregates)                                          |           |
 
 
 10. TESTING STRATEGY
@@ -623,15 +637,18 @@ Render Services:
   AUC guard, and preprocess_data.py file-existence guard. All tests use synthetic graphs; no
   real dataset required.
 - Integration Tests: Agent tools tested via scripts/test_agent.py with 9 question types.
-- Manual QA: All 14 dashboard tabs tested on Python 3.12, macOS + MPS.
+- Manual QA: All 15 dashboard tabs tested on Python 3.12, macOS + MPS.
 - Phase 6 QA: All 5 analytics modules verified with synthetic data; fallback paths tested
   (Holt-Winters triggered when Prophet not installed; label-proxy used when model unavailable).
 - RAG Testing: 6 preset questions verified to return relevant source documents.
-- API Testing: All 8 endpoints tested via Swagger UI at /docs.
+- API Testing: All 11 endpoints tested via Swagger UI at /docs; MongoDB and PostgreSQL
+  fail-safe verified by running without MONGODB_URI / SUPABASE_URI set (/predict still returns).
 - Docker Testing: Both containers build and run locally before pushing to Render.
 - Memory Testing: MPS environment variables verified to prevent out-of-memory errors.
-- Business Translation QA: All 14 Business Question panels and 5 Plain English callouts
+- Business Translation QA: All 15 Business Question panels and 5 Plain English callouts
   verified to display correct dynamic values after computation.
+- DB Integration Testing: upsert_daily_alert ON CONFLICT behaviour verified with duplicate
+  date inserts; rolling average formula cross-checked against manual calculation.
 
 
 11. RISKS AND MITIGATIONS
