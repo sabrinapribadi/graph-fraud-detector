@@ -10,7 +10,6 @@ import numpy as np
 import networkx as nx
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
-from sklearn.preprocessing import StandardScaler
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +42,11 @@ class EllipticDataLoader:
             self.features  = pd.read_parquet(_FEAT_PQ)
             self.classes   = pd.read_parquet(_CLS_PQ)
             self.edgelist  = pd.read_parquet(_EDGE_PQ)
+            # Downcast feature columns float64 → float32 immediately after load.
+            # 203k rows × 166 cols: float64 = 272 MB, float32 = 136 MB (saves 136 MB).
+            f64_cols = self.features.select_dtypes(include="float64").columns
+            if len(f64_cols):
+                self.features[f64_cols] = self.features[f64_cols].astype(np.float32)
             logger.info(f"Loaded {len(self.features):,} nodes, {len(self.edgelist):,} edges")
             return self.features, self.classes, self.edgelist
 
@@ -109,10 +113,14 @@ class EllipticDataLoader:
             if np.isnan(features[:, i]).any():
                 features[:, i] = np.nan_to_num(features[:, i], nan=col_means[i])
         
-        # Normalize features
-        scaler = StandardScaler()
-        features_scaled = scaler.fit_transform(features)
-        
+        # Normalise in float32 throughout — StandardScaler.fit_transform returns
+        # float64 even for float32 input, creating a hidden 272 MB intermediate.
+        # Manual z-score in float32 avoids that allocation entirely.
+        mean = features.mean(axis=0)          # float32
+        std  = features.std(axis=0)           # float32
+        std[std == 0] = 1.0                   # avoid division by zero
+        features_scaled = (features - mean) / std   # stays float32
+
         self.node_features = features_scaled
         logger.info(f"Features shape: {features_scaled.shape}")
         return features_scaled
@@ -192,7 +200,7 @@ class EllipticDataLoader:
                 features=self.node_features[i],
                 label=self.node_labels[i],
                 train_mask=self.train_mask[i] if hasattr(self, 'train_mask') else False,
-                test_mask=self.test_mask[i] if hasattr(self, 'test_mask') else False
+                test_mask=self.test_mask[i] if hasattr(self, 'test_mask') else False,
             )
         
         # Add edges
