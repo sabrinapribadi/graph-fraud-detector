@@ -1,8 +1,8 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 5.0 (Code Quality, 9-Tool Agent, Conversation History, Unit Tests)
+Version: 6.0 (RL Threshold Bandit, MongoDB Alert Layer, 15-Tab Dashboard)
 Author: Sabrina Pribadi
-Date: July 1, 2026
+Date: July 10, 2026
 Status: Completed
 
 
@@ -17,7 +17,7 @@ executives, auditors) cannot act on outputs they cannot understand.
 
 Solution: A Graph Neural Network (GNN) system that learns from both transaction features and
 network topology to classify illicit nodes in the Elliptic Bitcoin dataset. The system wraps
-the model in a 14-tab Streamlit dashboard, a FastAPI REST API, a LangChain AI agent, a
+the model in a 15-tab Streamlit dashboard, a FastAPI REST API, a LangChain AI agent, a
 Retrieval-Augmented Generation (RAG) knowledge base, Phase 6 advanced quant-finance analytics,
 and a Business Translation Layer that frames every technical output as a plain-English business
 question — enabling both technical and non-technical users to explore, query, and act on fraud
@@ -81,13 +81,13 @@ In-Scope:
     - Regulatory Capital: Basel III Standardised Approach + IRB Vasicek formula (99.9% CI)
     - Fraud Contagion Score: Stochastic SIR diffusion; Composite Risk Score
 - Business Translation Layer: Green Business Question panel + amber Plain English callout on all
-  14 tabs; help= tooltip text on all technical parameter inputs
+  15 tabs; help= tooltip text on all technical parameter inputs
 - LLM Agent: LangChain agent with 9 tools; multi-turn conversation history; follow-up suggestions; offline fallback mode
 - RAG Knowledge Base: 25 domain documents, ChromaDB vector store, TF-IDF fallback,
   OpenAI GPT-4o-mini synthesis
 - Auto-Discovery: 5 proactive fraud pattern detection methods
 - Model Explainability: Gradient-based feature attribution
-- UI: Streamlit 14-tab dashboard with dark theme, golden ratio layout, Material icons
+- UI: Streamlit 15-tab dashboard with dark theme, golden ratio layout, Material icons
 - API: FastAPI REST service with 8 endpoints and Swagger documentation
 - Deployment: Docker containers on Render
 - Documentation: README.md (GitHub front page) and PRD.md (engineering reference)
@@ -220,8 +220,8 @@ Module G: FastAPI REST Service
 - G.3 Model loaded at startup via lifespan event.
 - G.4 Deployed as a separate Docker container on Render (port 8000).
 
-Module H: Streamlit Dashboard (14-tab)
-- H.1 14 tabs with Material icon labels — no emoji in any tab name or heading.
+Module H: Streamlit Dashboard (15-tab)
+- H.1 15 tabs with Material icon labels — no emoji in any tab name or heading.
 - H.2 Golden ratio column splits (1:1.618) applied throughout.
 - H.3 Fibonacci-scale spacing variables (8/13/21/34/55 px) in CSS.
 - H.4 Technical context panel (blue-border) at the top of each tab explaining the methodology.
@@ -260,7 +260,7 @@ Module H: Streamlit Dashboard (14-tab)
      loop — users previously got best params displayed but had no way to act on them in-app.
      Parameter table includes a "Description" column explaining each hyperparameter's role.
      Context box below the table explains that "Apply" replaces the active model across all
-     14 tabs (Network Explorer, AI Chat, Risk Analysis, Explainability, Forecast, Contagion).
+     15 tabs (Network Explorer, AI Chat, Risk Analysis, Explainability, Forecast, Contagion).
 - H.15 Advanced ML → Ensemble Model: expander "What is the difference between mean and sum
      aggregation?" explains GraphSAGE aggregators in a Markdown table with three rows (mean,
      sum, max) covering how each works, what it is best for, and its implication for fraud
@@ -399,7 +399,7 @@ Module J: Business Translation Layer
   rendered inline after Phase 6 results are computed.
 - J.3 Helper function _biz_box(question, answer): renders the green Business Question panel.
 - J.4 Helper function _plain_english(text): renders the amber Plain English callout.
-- J.5 All 14 tabs have a Business Question framing appropriate to the tab's content.
+- J.5 All 15 tabs have a Business Question framing appropriate to the tab's content.
 - J.6 Phase 6 tabs (10–14) generate dynamic plain-English text from computed results:
     - Stress Testing: "In a {worst_scenario}, losses would be {ratio}× your baseline —
       from ${baseline} to ${worst_total}. In 95% of scenarios, losses won't exceed ${var_95}."
@@ -470,7 +470,7 @@ Render Services:
 8. TECHNICAL ARCHITECTURE
 
 +──────────────────────────────────────────────────────────────────────────────────+
-|                       STREAMLIT DASHBOARD (14 tabs)                               |
+|                       STREAMLIT DASHBOARD (15 tabs)                               |
 |  Overview | Network | AI Agent | Risk | Explorer | Discovery | ML | Temporal      |
 |  Knowledge Base (RAG)                                                             |
 |  Stress Testing | Risk-Adjusted Metrics | Loss Forecasting                        |
@@ -599,6 +599,20 @@ Render Services:
 |        |          |   every search click                                              |           |
 |        |          | - Dashboard badge updated: "6 Analytical Tools" → "9 Analytical  |           |
 |        |          |   Tools"                                                          |           |
+| 27     | 1 day    | MongoDB alert layer + RL Threshold Bandit + 15th dashboard tab:   | Completed |
+|        |          | - src/db/mongo.py: fail-safe MongoDB singleton; connect/close on   |           |
+|        |          |   FastAPI startup/shutdown; log_alert() persists HIGH/MEDIUM       |           |
+|        |          |   predictions to Atlas fraud_alerts collection with timestamp index|           |
+|        |          | - GET /alerts and GET /alerts/summary endpoints added to API       |           |
+|        |          | - src/rl/bandit.py: LinUCBBandit (ridge-regularised, np.linalg.solve)|          |
+|        |          | - src/rl/time_step_features.py: 6 context features from 49 Elliptic|           |
+|        |          |   time steps (illicit_rate, labeled_fraction, tx_count_norm,      |           |
+|        |          |   illicit_velocity, cumul_illicit_rate, bias)                      |           |
+|        |          | - src/rl/threshold_selector.py: 5 threshold arms (0.3/0.5/0.6/0.7/|           |
+|        |          |   0.8); Beta-simulated fraud probs; FP_cost=1.0, FN_cost=10.0;    |           |
+|        |          |   full-feedback sequential training; what-if predictor             |           |
+|        |          | - Tab 15 "RL Threshold" added: KPIs, cumulative regret chart,      |           |
+|        |          |   arm selection pie, per-step threshold timeline, what-if sliders  |           |
 
 
 10. TESTING STRATEGY
@@ -638,7 +652,7 @@ Render Services:
 | Dockerfile COPY failure on Render | Removed explicit raw CSV COPY; parquet bundled via COPY .   | Resolved |
 | Prophet not installed on Render   | Holt-Winters fallback implemented; PROPHET_AVAILABLE flag   | Resolved |
 | Non-technical users can't act     | Business Translation Layer: green Q&A + amber plain-English | Resolved |
-|   on technical outputs            | callouts on all 14 tabs; help= tooltips on all jargon inputs|          |
+|   on technical outputs            | callouts on all 15 tabs; help= tooltips on all jargon inputs|          |
 | Sharpe == Sortino always          | Sortino denominator was std(1-r)=std(r); fixed with proper  | Resolved |
 |                                   | semi-deviation: RMS of returns below risk-free threshold    |          |
 | Forecast dates showed only 2011   | Used weekly step; corrected to bi-weekly (2×Timedelta) so  | Resolved |
@@ -687,7 +701,7 @@ Functional requirements (all achieved):
 - Monte Carlo simulation runs in under 10 seconds for 10,000 iterations
 - 5 auto-discovery insight types surface without user input
 - RAG returns relevant source documents for 5+ question types
-- 14-tab Streamlit dashboard loads in under 3 seconds
+- 15-tab Streamlit dashboard loads in under 3 seconds
 - FastAPI serves all 8 endpoints with Swagger documentation
 - Docker containers deploy to Render and pass health checks
 - All 5 Phase 6 analytics modules run end-to-end with graceful fallbacks
@@ -736,4 +750,4 @@ Code quality requirements (all achieved):
   run_risk_analysis, get_anomalous_patterns, analyze_temporal_trends, forecast_fraud_losses,
   explain_node_features
 - Discovery Methods: Money Laundering Rings, Structuring, Rapid Chains, Mixed Signals, Outliers
-- Business Translation: _biz_box() green panels + _plain_english() amber callouts on all 14 tabs
+- Business Translation: _biz_box() green panels + _plain_english() amber callouts on all 15 tabs

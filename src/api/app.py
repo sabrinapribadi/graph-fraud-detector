@@ -27,6 +27,7 @@ from typing import Optional, List, Dict, Any
 
 from src.models.gnn_model import GraphSAGE
 from src.analytics.risk_analysis import QuantitativeRiskAnalyzer
+from src.db import mongo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -161,6 +162,9 @@ async def predict_transaction(request: TransactionRequest):
         else:
             risk_level, prediction = "LOW",    "LEGITIMATE"
 
+        if risk_level in ("HIGH", "MEDIUM"):
+            mongo.log_alert(request.node_id, prob, risk_level, prediction)
+
         return PredictionResponse(
             node_id=request.node_id,
             fraud_probability=prob,
@@ -215,12 +219,54 @@ async def discover_insights():
         "insights": insights,
     }
 
-# ── Startup event ─────────────────────────────────────────────────────────────
+@app.get("/alerts")
+async def get_alerts(limit: int = 50):
+    db = mongo.get_db()
+    if db is None:
+        return {"status": "unavailable", "alerts": []}
+    docs = list(
+        db[mongo.ALERTS_COL]
+        .find({}, {"_id": 0})
+        .sort("timestamp", -1)
+        .limit(limit)
+    )
+    for d in docs:
+        if hasattr(d.get("timestamp"), "isoformat"):
+            d["timestamp"] = d["timestamp"].isoformat()
+    return {"status": "success", "count": len(docs), "alerts": docs}
+
+@app.get("/alerts/summary")
+async def get_alerts_summary():
+    db = mongo.get_db()
+    if db is None:
+        return {"status": "unavailable"}
+    pipeline = [
+        {"$group": {"_id": "$risk_level", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    breakdown = {r["_id"]: r["count"] for r in db[mongo.ALERTS_COL].aggregate(pipeline)}
+    total = sum(breakdown.values())
+    latest = db[mongo.ALERTS_COL].find_one({}, {"_id": 0}, sort=[("timestamp", -1)])
+    if latest and hasattr(latest.get("timestamp"), "isoformat"):
+        latest["timestamp"] = latest["timestamp"].isoformat()
+    return {
+        "status": "success",
+        "total_alerts": total,
+        "breakdown": breakdown,
+        "latest": latest,
+    }
+
+# ── Startup / shutdown events ─────────────────────────────────────────────────
 
 @app.on_event("startup")
 async def startup_event():
+    mongo.connect()
     try:
         _load()
         logger.info("API ready.")
     except Exception as exc:
         logger.error(f"Startup error: {exc}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    mongo.close()
