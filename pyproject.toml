@@ -41,6 +41,7 @@ pyarrow = ">=14.0.0"
 prophet = ">=1.1"
 duckduckgo-search = ">=6.0"
 pymongo = {version = "^4.6.0", extras = ["srv"]}
+psycopg2-binary = "^2.9.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.5.1"

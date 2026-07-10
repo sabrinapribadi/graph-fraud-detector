@@ -3,8 +3,8 @@
 An end-to-end Graph Neural Network system for detecting fraudulent Bitcoin transactions,
 featuring quantitative risk analysis, a 15-tab interactive dashboard, a LangChain AI agent
 with 9 tools and multi-turn conversation history, RAG-powered fraud knowledge search,
-Phase 6 advanced quant-finance analytics, a FastAPI REST service with MongoDB alert
-persistence, and a LinUCB contextual bandit for adaptive fraud threshold selection —
+Phase 6 advanced quant-finance analytics, a FastAPI REST service with medallion architecture persistence (MongoDB Atlas bronze layer +
+Supabase PostgreSQL gold layer), and a LinUCB contextual bandit for adaptive fraud threshold selection —
 designed so non-finance users can interpret every result in plain English.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector-dashboards.onrender.com)
@@ -97,9 +97,10 @@ graph-fraud-detector/
 │   │   ├── regulatory_capital.py    # Basel III SA + IRB Vasicek
 │   │   └── contagion.py             # SIR diffusion, Composite Risk Score
 │   ├── api/
-│   │   └── app.py                   # FastAPI REST service (10 endpoints incl. /alerts)
+│   │   └── app.py                   # FastAPI REST service (11 endpoints incl. /alerts, /stats/daily)
 │   ├── db/
-│   │   └── mongo.py                 # MongoDB Atlas singleton; fail-safe alert persistence
+│   │   ├── mongo.py                 # MongoDB Atlas singleton; fail-safe alert persistence (bronze)
+│   │   └── postgres.py              # Supabase PostgreSQL pool; daily aggregate upserts (gold)
 │   ├── data/
 │   │   └── loader.py                # EllipticDataLoader: parquet-first load
 │   ├── models/
@@ -231,6 +232,9 @@ docker run -p 8000:8000 fraud-detector-api
 | `/network/stats` | GET | Network topology metrics |
 | `/analyze/risk` | POST | Monte Carlo risk assessment |
 | `/discover/insights` | GET | Auto-discovery fraud pattern results |
+| `/alerts` | GET | Last N raw fraud alerts from MongoDB (bronze layer) |
+| `/alerts/summary` | GET | Alert count by risk level + latest alert timestamp |
+| `/stats/daily` | GET | Last N days of aggregated alert stats from PostgreSQL (gold layer) |
 | `/docs` | GET | Interactive Swagger documentation |
 
 Example:
@@ -259,7 +263,9 @@ print(response.json())
 | Quant Finance | Monte Carlo, TVM, VaR, Sharpe/Sortino/IR/Calmar, Basel III SA + IRB Vasicek, SIR diffusion |
 | Forecasting | Prophet (optional), Holt-Winters double exponential smoothing fallback |
 | Graph Analysis | NetworkX, SciPy (stats, KDE) |
-| Data Storage | Parquet (pyarrow, zstd) — 690 MB CSV → 87 MB committed |
+| Data Storage (files) | Parquet (pyarrow, zstd) — 690 MB CSV → 87 MB committed |
+| Data Storage (bronze) | MongoDB Atlas M0 Free — raw fraud alert events (pymongo) |
+| Data Storage (gold) | Supabase PostgreSQL — daily aggregated analytics (psycopg2) |
 | Deployment | Docker, Render |
 | Language | Python 3.12 |
 

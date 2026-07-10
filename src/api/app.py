@@ -27,7 +27,7 @@ from typing import Optional, List, Dict, Any
 
 from src.models.gnn_model import GraphSAGE
 from src.analytics.risk_analysis import QuantitativeRiskAnalyzer
-from src.db import mongo
+from src.db import mongo, postgres
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Graph Fraud Detection API",
     description="API for fraud detection in Bitcoin transaction networks",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 app.add_middleware(
@@ -164,6 +164,7 @@ async def predict_transaction(request: TransactionRequest):
 
         if risk_level in ("HIGH", "MEDIUM"):
             mongo.log_alert(request.node_id, prob, risk_level, prediction)
+            postgres.upsert_daily_alert(prob, risk_level)
 
         return PredictionResponse(
             node_id=request.node_id,
@@ -235,6 +236,13 @@ async def get_alerts(limit: int = 50):
             d["timestamp"] = d["timestamp"].isoformat()
     return {"status": "success", "count": len(docs), "alerts": docs}
 
+@app.get("/stats/daily")
+async def get_daily_stats(days: int = 30):
+    rows = postgres.get_daily_summary(days)
+    if not rows and postgres._pool is None:
+        return {"status": "unavailable", "days": days, "rows": []}
+    return {"status": "success", "days": days, "count": len(rows), "rows": rows}
+
 @app.get("/alerts/summary")
 async def get_alerts_summary():
     db = mongo.get_db()
@@ -261,6 +269,7 @@ async def get_alerts_summary():
 @app.on_event("startup")
 async def startup_event():
     mongo.connect()
+    postgres.connect()
     try:
         _load()
         logger.info("API ready.")
@@ -270,3 +279,4 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     mongo.close()
+    postgres.close()
