@@ -2,6 +2,9 @@
 
 Major design decisions for graph-fraud-detector are documented here.
 
+> For implementation blockers, root-cause diagnoses, and lessons learned across all sprints,
+> see [docs/lessons-learned.md](../lessons-learned.md).
+
 | ADR | Decision | Status |
 |-----|----------|--------|
 | [ADR-001](ADR-001-rl-threshold-bandit.md) | RL: LinUCB contextual bandit for adaptive fraud detection threshold selection | Accepted |
