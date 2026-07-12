@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graph Fraud Detector — Live API Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0e1117;
+      --surface:  #1a1d27;
+      --card:     #1e2130;
+      --border:   #2d3143;
+      --accent:   #FF4B4B;
+      --green:    #00c96f;
+      --yellow:   #ffd600;
+      --red:      #FF4B4B;
+      --text:     #f0f2f6;
+      --muted:    #8b9ab0;
+      --radius:   10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 1rem; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .btn-swagger {
+      background: var(--accent);
+      color: #fff !important;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600 !important;
+    }
+    .btn-swagger:hover { opacity: 0.88; }
+
+    /* ── Status pill ── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,201,111,0.12);
+      color: var(--green);
+      border: 1px solid rgba(0,201,111,0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-pill.loading { color: var(--yellow); background: rgba(255,214,0,0.1); border-color: rgba(255,214,0,0.3); }
+    .status-pill.error   { color: var(--red);    background: rgba(255,75,75,0.1);  border-color: rgba(255,75,75,0.3); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .dot.pulse { animation: pulse 1.8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Layout ── */
+    main { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
+
+    /* ── Hero ── */
+    .hero { text-align: center; margin-bottom: 3.5rem; }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 1.05rem; max-width: 600px; margin: 0 auto 1.5rem; }
+    .hero-badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 0.75rem; }
+    .badge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ── Section ── */
+    section { margin-bottom: 3rem; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-header h2 { font-size: 1.1rem; font-weight: 600; }
+    .section-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(255,75,75,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(255,75,75,0.25);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Metric cards ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+    }
+    .card-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.5rem; }
+    .card-value { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+    .card-sub   { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+    .card-value.red    { color: var(--red); }
+    .card-value.green  { color: var(--green); }
+    .card-value.yellow { color: var(--yellow); }
+
+    /* ── Model metrics row ── */
+    .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+    .metric-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      text-align: center;
+    }
+    .metric-item .val { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+    .metric-item .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
+
+    /* ── Predict form ── */
+    .predict-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 680px) { .predict-grid { grid-template-columns: 1fr; } }
+    .form-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .form-panel h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    label { display: block; font-size: 0.825rem; color: var(--muted); margin-bottom: 5px; }
+    select, input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 9px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 1rem;
+    }
+    select:focus, input[type="text"]:focus { border-color: var(--accent); }
+
+    .features-hint {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+    .features-hint span { color: var(--text); }
+
+    .btn-predict {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 11px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-predict:hover  { opacity: 0.88; }
+    .btn-predict:active { transform: scale(0.98); }
+    .btn-predict:disabled { opacity: 0.5; cursor: wait; }
+
+    /* ── Result panel ── */
+    .result-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .result-empty {
+      text-align: center;
+      color: var(--muted);
+    }
+    .result-empty svg { width: 48px; height: 48px; margin-bottom: 0.75rem; opacity: 0.3; }
+    .result-empty p { font-size: 0.875rem; }
+
+    .risk-badge {
+      display: inline-block;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 6px 18px;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .risk-HIGH   { background: rgba(255,75,75,0.15); color: var(--red);    border: 1px solid rgba(255,75,75,0.4); }
+    .risk-MEDIUM { background: rgba(255,214,0,0.12); color: var(--yellow); border: 1px solid rgba(255,214,0,0.4); }
+    .risk-LOW    { background: rgba(0,201,111,0.12); color: var(--green);  border: 1px solid rgba(0,201,111,0.4); }
+
+    .prob-label  { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
+    .prob-bar-bg { background: var(--surface); border-radius: 20px; height: 10px; overflow: hidden; margin-bottom: 1rem; }
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 20px;
+      transition: width 0.7s ease;
+      background: var(--accent);
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .key  { color: var(--muted); }
+    .result-row .val  { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .result-row .val.mono { font-size: 0.78rem; }
+
+    .raw-toggle {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .raw-json {
+      display: none;
+      background: var(--surface);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--green);
+      margin-top: 6px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* ── Chart ── */
+    .chart-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .chart-wrap canvas { max-height: 280px; }
+    .chart-empty { text-align: center; color: var(--muted); padding: 3rem 1rem; font-size: 0.875rem; }
+
+    /* ── Insights ── */
+    .insights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .insight-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .insight-card .sev {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 0.5rem;
+    }
+    .sev-HIGH     { color: var(--red); }
+    .sev-MEDIUM   { color: var(--yellow); }
+    .sev-LOW      { color: var(--green); }
+    .sev-CRITICAL { color: #e040fb; }
+    .insight-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .insight-card p  { font-size: 0.8rem; color: var(--muted); }
+
+    /* ── Architecture note ── */
+    .arch-note {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      margin-top: 0.75rem;
+    }
+    .arch-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 14px;
+      text-align: center;
+    }
+    .arch-box .name { font-weight: 600; }
+    .arch-box .tech { font-size: 0.7rem; color: var(--muted); }
+    .arch-arrow { color: var(--muted); font-size: 1.2rem; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Skeleton loader ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--card) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+      height: 1.8rem;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-brand" href="#">
+    <svg viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="15" fill="#FF4B4B" opacity=".12"/>
+      <circle cx="16" cy="16" r="5" fill="#FF4B4B"/>
+      <line x1="16" y1="11" x2="8" y2="5"  stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
+      <line x1="16" y1="11" x2="24" y2="5" stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
+      <line x1="16" y1="21" x2="8" y2="27" stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
+      <line x1="16" y1="21" x2="24" y2="27" stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
+      <circle cx="8"  cy="5"  r="2.5" fill="#FF4B4B" opacity=".5"/>
+      <circle cx="24" cy="5"  r="2.5" fill="#FF4B4B" opacity=".5"/>
+      <circle cx="8"  cy="27" r="2.5" fill="#FF4B4B" opacity=".5"/>
+      <circle cx="24" cy="27" r="2.5" fill="#FF4B4B" opacity=".5"/>
+    </svg>
+    Graph Fraud Detector
+  </a>
+  <div class="nav-links">
+    <span id="apiStatus" class="status-pill loading"><span class="dot pulse"></span>Connecting…</span>
+    <a href="https://github.com/sabrinapribadi/graph-fraud-detector" target="_blank">GitHub</a>
+    <a href="https://graph-fraud-detector-api-service.onrender.com/docs" target="_blank" class="btn-swagger">Swagger UI</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Detecting Bitcoin Fraud with<br><span>Graph Neural Networks</span></h1>
+    <p>
+      A live FastAPI service exposing 11 REST endpoints backed by GraphSAGE (AUC 0.955),
+      MongoDB Atlas (bronze layer), and Supabase PostgreSQL (gold layer).
+    </p>
+    <div class="hero-badges">
+      <span class="badge">FastAPI 0.115</span>
+      <span class="badge">PyTorch + GraphSAGE</span>
+      <span class="badge">MongoDB Atlas</span>
+      <span class="badge">Supabase PostgreSQL</span>
+      <span class="badge">Medallion Architecture</span>
+      <span class="badge">Docker · Render</span>
+    </div>
+  </div>
+
+  <!-- Section 1 — Live Graph Stats -->
+  <section>
+    <div class="section-header">
+      <h2>Live Dataset &amp; Graph Stats</h2>
+      <span class="section-tag">GET /stats</span>
+    </div>
+    <div class="cards" id="statsCards">
+      <div class="card"><div class="card-label">Total Nodes</div><div class="skeleton" style="height:2rem;width:60%"></div></div>
+      <div class="card"><div class="card-label">Total Edges</div><div class="skeleton" style="height:2rem;width:60%"></div></div>
+      <div class="card"><div class="card-label">Illicit Transactions</div><div class="skeleton" style="height:2rem;width:60%"></div></div>
+      <div class="card"><div class="card-label">Fraud Rate (labeled)</div><div class="skeleton" style="height:2rem;width:60%"></div></div>
+    </div>
+    <div class="metrics-row" id="modelMetrics">
+      <div class="metric-item"><div class="val">0.955</div><div class="lbl">AUC-ROC</div></div>
+      <div class="metric-item"><div class="val">0.898</div><div class="lbl">F1 Score</div></div>
+      <div class="metric-item"><div class="val">89.0%</div><div class="lbl">Accuracy</div></div>
+      <div class="metric-item"><div class="val">90.6%</div><div class="lbl">Precision</div></div>
+      <div class="metric-item"><div class="val">89.0%</div><div class="lbl">Recall</div></div>
+    </div>
+  </section>
+
+  <!-- Section 2 — Fraud Prediction -->
+  <section>
+    <div class="section-header">
+      <h2>Live Fraud Prediction</h2>
+      <span class="section-tag">POST /predict</span>
+    </div>
+    <div class="predict-grid">
+      <div class="form-panel">
+        <h3>Transaction Input</h3>
+        <label for="nodeSelect">Select a known node ID</label>
+        <select id="nodeSelect" onchange="onNodeSelectChange()">
+          <option value="5530458">5530458 — known suspicious</option>
+          <option value="2984918">2984918 — top hub (degree 473)</option>
+          <option value="1234567">1234567 — example node</option>
+          <option value="custom">Custom node ID…</option>
+        </select>
+        <div id="customNodeWrap" style="display:none">
+          <label for="customNode">Node ID</label>
+          <input type="text" id="customNode" placeholder="Enter any node ID" />
+        </div>
+        <label>Feature vector (166 values)</label>
+        <div class="features-hint">
+          Sending <span>[0.0 × 166]</span> — the model runs live GNN inference
+          on the feature tensor regardless of node ID.
+          <br/>Real node features load in the full dashboard.
+        </div>
+        <button class="btn-predict" id="predictBtn" onclick="predict()">
+          Analyze Transaction
+        </button>
+      </div>
+      <div class="result-panel" id="resultPanel">
+        <div class="result-empty" id="resultEmpty">
+          <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2"/><path d="M24 14v12M24 34v1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <p>Submit a transaction to see the model's<br>fraud probability and risk assessment.</p>
+        </div>
+        <div id="resultContent" style="display:none"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3 — Daily Alert Trends -->
+  <section>
+    <div class="section-header">
+      <h2>Daily Alert Trends</h2>
+      <span class="section-tag">GET /stats/daily</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="dailyChart"></canvas>
+      <div class="chart-empty" id="chartEmpty" style="display:none">
+        No alert data in the gold layer yet.<br>Submit a HIGH or MEDIUM prediction above to populate it.
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4 — Auto-discovered Insights -->
+  <section>
+    <div class="section-header">
+      <h2>Auto-Discovered Fraud Patterns</h2>
+      <span class="section-tag">GET /discover/insights</span>
+    </div>
+    <div class="insights-grid" id="insightsGrid">
+      <div class="insight-card"><div class="skeleton" style="height:1rem;width:40%;margin-bottom:8px"></div><div class="skeleton" style="height:1rem;width:80%"></div></div>
+      <div class="insight-card"><div class="skeleton" style="height:1rem;width:40%;margin-bottom:8px"></div><div class="skeleton" style="height:1rem;width:80%"></div></div>
+      <div class="insight-card"><div class="skeleton" style="height:1rem;width:40%;margin-bottom:8px"></div><div class="skeleton" style="height:1rem;width:80%"></div></div>
+    </div>
+  </section>
+
+  <!-- Section 5 — Architecture -->
+  <section>
+    <div class="section-header">
+      <h2>System Architecture</h2>
+    </div>
+    <div class="arch-note">
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Medallion data architecture: raw events flow from the API into MongoDB Atlas (bronze layer),
+        then aggregate daily into Supabase PostgreSQL (gold layer). The GNN model is pre-computed
+        at Docker build time — runtime memory footprint is &lt; 50 MB.
+      </p>
+      <div class="arch-flow">
+        <div class="arch-box">
+          <div class="name">Elliptic Dataset</div>
+          <div class="tech">203,769 nodes · parquet</div>
+        </div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box">
+          <div class="name">GraphSAGE</div>
+          <div class="tech">PyTorch · AUC 0.955</div>
+        </div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box">
+          <div class="name">FastAPI</div>
+          <div class="tech">11 endpoints · Docker</div>
+        </div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box">
+          <div class="name">MongoDB Atlas</div>
+          <div class="tech">Bronze · raw alerts</div>
+        </div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box">
+          <div class="name">Supabase PG</div>
+          <div class="tech">Gold · daily aggregates</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Footer ── -->
+<footer>
+  <p>
+    Built by <strong style="color:var(--text)">Sabrina Pribadi</strong> ·
+    <a href="https://github.com/sabrinapribadi/graph-fraud-detector">GitHub</a> ·
+    <a href="https://graph-fraud-detector-api-service.onrender.com/docs">Swagger UI</a>
+  </p>
+  <p style="margin-top:6px">
+    FastAPI · PyTorch · GraphSAGE · MongoDB Atlas · Supabase · Docker · Render
+  </p>
+</footer>
+
+<script>
+  const API = 'https://graph-fraud-detector-api-service.onrender.com';
+
+  // ── Health check ──────────────────────────────────────────────────────────
+  async function checkHealth() {
+    const pill = document.getElementById('apiStatus');
+    try {
+      const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout(15000) });
+      if (r.ok) {
+        pill.className = 'status-pill';
+        pill.innerHTML = '<span class="dot"></span>API Live';
+      } else {
+        throw new Error('non-200');
+      }
+    } catch {
+      pill.className = 'status-pill error';
+      pill.innerHTML = '<span class="dot"></span>API Offline';
+    }
+  }
+
+  // ── /stats ────────────────────────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const r = await fetch(`${API}/stats`);
+      if (!r.ok) return;
+      const d = await r.json();
+      document.getElementById('statsCards').innerHTML = `
+        <div class="card">
+          <div class="card-label">Total Nodes</div>
+          <div class="card-value">${(d.total_nodes||0).toLocaleString()}</div>
+          <div class="card-sub">Bitcoin transactions</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total Edges</div>
+          <div class="card-value">${(d.total_edges||0).toLocaleString()}</div>
+          <div class="card-sub">Directed transfers</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Illicit Transactions</div>
+          <div class="card-value red">${(d.illicit_count||0).toLocaleString()}</div>
+          <div class="card-sub">Confirmed fraud</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Fraud Rate</div>
+          <div class="card-value yellow">${d.fraud_rate||'—'}</div>
+          <div class="card-sub">Of labeled nodes</div>
+        </div>
+      `;
+    } catch { /* silently skip if API cold-starting */ }
+  }
+
+  // ── /stats/daily ─────────────────────────────────────────────────────────
+  async function loadDailyChart() {
+    try {
+      const r = await fetch(`${API}/stats/daily?days=30`);
+      if (!r.ok) return;
+      const d = await r.json();
+      const rows = d.rows || [];
+
+      if (rows.length === 0) {
+        document.getElementById('dailyChart').style.display = 'none';
+        document.getElementById('chartEmpty').style.display = 'block';
+        return;
+      }
+
+      const labels = rows.map(r => r.date);
+      const totals = rows.map(r => r.total_alerts);
+      const high   = rows.map(r => r.high_count);
+      const medium = rows.map(r => r.medium_count);
+
+      new Chart(document.getElementById('dailyChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'HIGH Risk',   data: high,   backgroundColor: 'rgba(255,75,75,0.75)',   borderRadius: 4 },
+            { label: 'MEDIUM Risk', data: medium, backgroundColor: 'rgba(255,214,0,0.65)',   borderRadius: 4 },
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#8b9ab0', boxRadius: 4 } },
+            tooltip: {
+              callbacks: {
+                afterBody: (items) => {
+                  const i = items[0].dataIndex;
+                  const prob = rows[i].avg_fraud_prob;
+                  return prob != null ? [`Avg fraud prob: ${(prob*100).toFixed(1)}%`] : [];
+                }
+              }
+            }
+          },
+          scales: {
+            x: { stacked: true, ticks: { color: '#8b9ab0' }, grid: { color: '#2d3143' } },
+            y: { stacked: true, ticks: { color: '#8b9ab0', stepSize: 1 }, grid: { color: '#2d3143' }, beginAtZero: true }
+          }
+        }
+      });
+    } catch { /* silently skip */ }
+  }
+
+  // ── /discover/insights ────────────────────────────────────────────────────
+  async function loadInsights() {
+    try {
+      const r = await fetch(`${API}/discover/insights`);
+      if (!r.ok) return;
+      const d = await r.json();
+      const insights = d.insights || [];
+      if (insights.length === 0) {
+        document.getElementById('insightsGrid').innerHTML =
+          '<p style="color:var(--muted);font-size:.875rem">No insights cached — insights are generated at build time.</p>';
+        return;
+      }
+      document.getElementById('insightsGrid').innerHTML = insights.slice(0, 6).map(ins => `
+        <div class="insight-card">
+          <div class="sev sev-${ins.severity||'MEDIUM'}">${ins.severity||'MEDIUM'} · ${ins.category||''}</div>
+          <h4>${ins.title||''}</h4>
+          <p>${ins.description||''}</p>
+        </div>
+      `).join('');
+    } catch { /* silently skip */ }
+  }
+
+  // ── /predict ──────────────────────────────────────────────────────────────
+  function onNodeSelectChange() {
+    const v = document.getElementById('nodeSelect').value;
+    document.getElementById('customNodeWrap').style.display = v === 'custom' ? 'block' : 'none';
+  }
+
+  async function predict() {
+    const btn = document.getElementById('predictBtn');
+    const sel = document.getElementById('nodeSelect').value;
+    const nodeId = sel === 'custom'
+      ? (document.getElementById('customNode').value.trim() || 'custom_node')
+      : sel;
+
+    btn.disabled = true;
+    btn.textContent = 'Analyzing…';
+    document.getElementById('resultEmpty').style.display = 'none';
+    document.getElementById('resultContent').style.display = 'none';
+
+    try {
+      const body = { node_id: nodeId, features: Array(166).fill(0.0) };
+      const r = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${r.status}`);
+      }
+
+      const d = await r.json();
+      const prob     = d.fraud_probability ?? 0;
+      const probPct  = (prob * 100).toFixed(1);
+      const risk     = d.risk_level || 'LOW';
+      const pred     = d.prediction || '—';
+      const barColor = risk === 'HIGH' ? '#FF4B4B' : risk === 'MEDIUM' ? '#ffd600' : '#00c96f';
+
+      document.getElementById('resultContent').innerHTML = `
+        <div style="margin-bottom:1rem">
+          <span class="risk-badge risk-${risk}">${risk} RISK — ${pred}</span>
+        </div>
+        <div class="prob-label">Fraud Probability — ${probPct}%</div>
+        <div class="prob-bar-bg">
+          <div class="prob-bar-fill" id="probFill" style="width:0%;background:${barColor}"></div>
+        </div>
+        <div class="result-row"><span class="key">Node ID</span><span class="val mono">${d.node_id}</span></div>
+        <div class="result-row"><span class="key">Fraud Probability</span><span class="val">${probPct}%</span></div>
+        <div class="result-row"><span class="key">Risk Level</span><span class="val">${risk}</span></div>
+        <div class="result-row"><span class="key">Classification</span><span class="val">${pred}</span></div>
+        <div class="result-row"><span class="key">Persisted to</span><span class="val mono" style="font-size:0.72rem">${risk === 'LOW' ? 'Not logged (LOW risk)' : 'MongoDB Atlas + Supabase PG'}</span></div>
+        <span class="raw-toggle" onclick="toggleRaw(this)">Show raw JSON response</span>
+        <pre class="raw-json">${JSON.stringify(d, null, 2)}</pre>
+      `;
+      document.getElementById('resultContent').style.display = 'block';
+      setTimeout(() => {
+        const fill = document.getElementById('probFill');
+        if (fill) fill.style.width = `${probPct}%`;
+      }, 50);
+
+      // Refresh daily chart if HIGH/MEDIUM (new row may have been written)
+      if (risk !== 'LOW') setTimeout(loadDailyChart, 2000);
+
+    } catch (e) {
+      document.getElementById('resultContent').innerHTML = `
+        <div style="color:var(--red);font-size:.875rem">
+          <strong>Request failed:</strong> ${e.message}<br>
+          <span style="color:var(--muted)">The API may be cold-starting (free tier). Try again in 30 seconds.</span>
+        </div>
+      `;
+      document.getElementById('resultContent').style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Analyze Transaction';
+    }
+  }
+
+  function toggleRaw(el) {
+    const pre = el.nextElementSibling;
+    const show = pre.style.display === 'none' || pre.style.display === '';
+    pre.style.display = show ? 'block' : 'none';
+    el.textContent = show ? 'Hide raw JSON response' : 'Show raw JSON response';
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  checkHealth();
+  loadStats();
+  loadDailyChart();
+  loadInsights();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 7.0 (PostgreSQL Gold Layer, Medallion Architecture, 11-Endpoint API)
+Version: 8.0 (GitHub Pages Interactive API Demo, Render Dashboard Suspended)
 Author: Sabrina Pribadi
 Date: July 10, 2026
 Status: Completed
@@ -627,6 +627,21 @@ Render Services:
 |        |          | - pyproject.toml + requirements.txt: psycopg2-binary added         |           |
 |        |          | - Medallion: MongoDB Atlas (bronze/raw) → PostgreSQL Supabase      |           |
 |        |          |   (gold/daily aggregates)                                          |           |
+| 29     | 1 day    | GitHub Pages interactive API demo + Render dashboard migration:    | Completed |
+|        |          | - docs/index.html: single-page demo served from GitHub Pages;      |           |
+|        |          |   calls 4 live endpoints (GET /stats, POST /predict,               |           |
+|        |          |   GET /stats/daily, GET /discover/insights)                        |           |
+|        |          | - GET /stats: live graph metric cards (nodes, edges, fraud rate)   |           |
+|        |          | - POST /predict: interactive fraud prediction form with risk badge, |           |
+|        |          |   animated probability bar, raw JSON toggle                        |           |
+|        |          | - GET /stats/daily: Chart.js stacked bar chart (HIGH/MEDIUM/day)   |           |
+|        |          |   reads from Supabase gold layer; auto-refreshes after prediction  |           |
+|        |          | - GET /discover/insights: fraud pattern cards (severity badges)    |           |
+|        |          | - Dark theme (#0e1117), coral accent, Inter + JetBrains Mono fonts |           |
+|        |          | - CORS already configured (allow_origins=["*"]) — no API changes   |           |
+|        |          | - Render dashboard service (graph-fraud-detector-dashboards)        |           |
+|        |          |   suspended — was OOMing on 512 MB Starter ($7/month wasted)       |           |
+|        |          | - README: Live Demo badge → GitHub Pages; Deployment row updated   |           |
 
 
 10. TESTING STRATEGY
