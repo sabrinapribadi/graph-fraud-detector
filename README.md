@@ -7,19 +7,20 @@ Phase 6 advanced quant-finance analytics, a FastAPI REST service with medallion 
 Supabase PostgreSQL gold layer), and a LinUCB contextual bandit for adaptive fraud threshold selection —
 designed so non-finance users can interpret every result in plain English.
 
-[![API Demo](https://img.shields.io/badge/Live_API_Demo-GitHub_Pages-FF4B4B?style=for-the-badge&logo=github)](https://sabrinapribadi.github.io/graph-fraud-detector/)
-[![API](https://img.shields.io/badge/API-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://graph-fraud-detector-api-service.onrender.com/docs)
+[![Dashboard](https://img.shields.io/badge/Live_Dashboard-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector.streamlit.app)
+[![API Demo](https://img.shields.io/badge/API_Demo-GitHub_Pages-238636?style=for-the-badge&logo=github)](https://sabrinapribadi.github.io/graph-fraud-detector/)
+[![API](https://img.shields.io/badge/API_Docs-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://graph-fraud-detector-api-service.onrender.com/docs)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com)
 
 ## Live Services
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| **Interactive API Demo** | [sabrinapribadi.github.io/graph-fraud-detector](https://sabrinapribadi.github.io/graph-fraud-detector/) | GitHub Pages — free, no cold start |
-| **API Documentation** | [graph-fraud-detector-api-service.onrender.com/docs](https://graph-fraud-detector-api-service.onrender.com/docs) | Swagger UI |
-| **Health Check** | [.../health](https://graph-fraud-detector-api-service.onrender.com/health) | Live |
+| **15-Tab Dashboard** | [graph-fraud-detector.streamlit.app](https://graph-fraud-detector.streamlit.app) | Streamlit Community Cloud — 1 GB RAM, free |
+| **Interactive API Demo** | [sabrinapribadi.github.io/graph-fraud-detector](https://sabrinapribadi.github.io/graph-fraud-detector/) | GitHub Pages — showcases all 11 FastAPI endpoints |
+| **API Swagger Docs** | [graph-fraud-detector-api-service.onrender.com/docs](https://graph-fraud-detector-api-service.onrender.com/docs) | Try endpoints live in browser |
+| **GitHub Repository** | [github.com/sabrinapribadi/graph-fraud-detector](https://github.com/sabrinapribadi/graph-fraud-detector) | Full source code |
 
 ## Features
 
