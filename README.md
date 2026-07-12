@@ -7,7 +7,7 @@ Phase 6 advanced quant-finance analytics, a FastAPI REST service with medallion 
 Supabase PostgreSQL gold layer), and a LinUCB contextual bandit for adaptive fraud threshold selection —
 designed so non-finance users can interpret every result in plain English.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector-dashboards.onrender.com)
+[![API Demo](https://img.shields.io/badge/Live_API_Demo-GitHub_Pages-FF4B4B?style=for-the-badge&logo=github)](https://sabrinapribadi.github.io/graph-fraud-detector/)
 [![API](https://img.shields.io/badge/API-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://graph-fraud-detector-api-service.onrender.com/docs)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -15,10 +15,10 @@ designed so non-finance users can interpret every result in plain English.
 ![alt text](image.png)
 ## Live Services
 
-| Service | URL | Status |
-|---------|-----|--------|
-| **Streamlit Dashboard** | [graph-fraud-detector-dashboards.onrender.com](https://graph-fraud-detector-dashboards.onrender.com) | Live |
-| **API Documentation** | [graph-fraud-detector-api-service.onrender.com/docs](https://graph-fraud-detector-api-service.onrender.com/docs) | Live |
+| Service | URL | Notes |
+|---------|-----|-------|
+| **Interactive API Demo** | [sabrinapribadi.github.io/graph-fraud-detector](https://sabrinapribadi.github.io/graph-fraud-detector/) | GitHub Pages — free, no cold start |
+| **API Documentation** | [graph-fraud-detector-api-service.onrender.com/docs](https://graph-fraud-detector-api-service.onrender.com/docs) | Swagger UI |
 | **Health Check** | [.../health](https://graph-fraud-detector-api-service.onrender.com/health) | Live |
 
 ## Features
@@ -266,7 +266,7 @@ print(response.json())
 | Data Storage (files) | Parquet (pyarrow, zstd) — 690 MB CSV → 87 MB committed |
 | Data Storage (bronze) | MongoDB Atlas M0 Free — raw fraud alert events (pymongo) |
 | Data Storage (gold) | Supabase PostgreSQL — daily aggregated analytics (psycopg2) |
-| Deployment | Docker, Render |
+| Deployment | Docker, Render (API), GitHub Pages (demo) |
 | Language | Python 3.12 |
 
 ## Key Dataset Facts
