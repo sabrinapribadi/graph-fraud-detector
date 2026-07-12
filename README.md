@@ -128,9 +128,13 @@ graph-fraud-detector/
 │   └── raw/                         # Not committed — place CSVs here only if re-generating parquet
 ├── tests/
 │   └── test_gnn_model.py            # 10 unit tests: GraphSAGE, FraudDetector, preprocess guard
+├── docs/
+│   ├── lessons-learned.md           # 11 blockers: root causes, solutions, lessons learned
+│   └── adr/                         # Architecture Decision Records (ADR-001 to ADR-003)
 ├── Dockerfile                       # Dashboard container (port 8501)
 ├── Dockerfile.api                   # API container (port 8000)
-├── render.yaml                      # Render deployment config
+├── runtime.txt                      # Python 3.12 pin for Streamlit Community Cloud
+├── render.yaml                      # Render deployment config (API service)
 ├── pyproject.toml                   # Poetry dependencies
 └── PRD.md                           # Full product requirements document
 ```
