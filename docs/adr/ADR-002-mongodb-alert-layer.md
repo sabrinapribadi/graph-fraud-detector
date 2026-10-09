@@ -117,7 +117,7 @@ efficient retrieval of recent alerts without full collection scan.
 
 ## Negative Consequences
 
-- Port 27017 is blocked on the corporate network — local dev requires mobile
+- Port 27017 is blocked on the corporate network used during development — local dev requires mobile
   hotspot or a VPN; Render deployment is unaffected (Render → Atlas unrestricted)
 - All writes are synchronous (pymongo, not motor); for high-traffic production use
   Motor (async pymongo) would be recommended to avoid blocking the event loop

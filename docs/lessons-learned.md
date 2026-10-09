@@ -137,7 +137,7 @@ features_scaled = (features - mean) / std   # stays float32
 - Port 5432 (direct connection): "No route to host"
 - Port 27017 (MongoDB Atlas): Also blocked
 
-**Root cause:** The corporate network firewall blocks outbound connections on non-standard ports. Only HTTP (80) and HTTPS (443) are permitted.
+**Root cause:** The corporate network firewall used during development blocks outbound connections on non-standard ports. Only HTTP (80) and HTTPS (443) are permitted.
 
 **Solution:** Used web-based database UIs instead of desktop clients:
 - **Supabase:** SQL Editor and Table Editor at `app.supabase.com` — fully functional over HTTPS
