@@ -70,6 +70,8 @@
 
 - **Downstream:** README, PRD, knowledge-base text and dashboard now read `data/eval_results.json`; a "structuring" insight was dropped because Elliptic features are anonymised, not amounts.
 - **Hosting:** the paid API and dashboard services are retired; the demo is static on GitHub Pages and the dashboard stays on Streamlit Community Cloud.
+- **Threshold curve (added 2026-11-11, same seeded forest, every other number identical):** flags at thresholds 0.05–0.95 with caught, missed and false alarms, for the results page's what-if.
+- **GraphSAGE re-run (2026-11-11):** AUC 0.955, F1 0.879 vs the recorded 0.956 and 0.877; its CPU training is not fully deterministic, so the recorded run stays the reported one.
 - **Also found:** the old demo's prediction button sent 166 zeros for every transaction; the static demo shows real held-out transactions instead.
 
 ## Considered Options

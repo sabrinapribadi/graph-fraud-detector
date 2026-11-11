@@ -45,6 +45,12 @@ def rf_temporal() -> dict:
            "f1_after_shutdown": float(f1_score(y[(d.time_step[te] >= 43).to_numpy()], p[(d.time_step[te] >= 43).to_numpy()], zero_division=0)),
            "paper": {"precision": 0.956, "recall": 0.670, "f1": PAPER_F1}}
     res["check_passed"] = bool(abs(res["f1"] - PAPER_F1) <= TOL)
+    # threshold what-if for the results page: flag a transaction when its illicit score is above the threshold (as predict does at 0.5)
+    res["threshold_curve"] = []
+    for t in [round(0.05 * k, 2) for k in range(1, 20)]:
+        f = s > t; tp = int((f & (y == 1)).sum()); fp = int((f & (y == 0)).sum()); fn = int((~f & (y == 1)).sum())
+        res["threshold_curve"].append({"threshold": t, "flagged": int(f.sum()), "caught": tp, "missed": fn, "false_alarms": fp,
+                                       "precision": tp / max(1, tp + fp), "recall": tp / max(1, tp + fn)})
     return res
 
 

@@ -1,388 +1,97 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Graph Fraud Detector</title>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bitcoin Fraud Screening</title>
 <!-- share preview (portfolio rule R18) -->
-<meta name="description" content="Screening Bitcoin transactions for money laundering on the public Elliptic dataset: illicit F1 0.815 on unseen time steps, matching the published benchmark. Static demo, no server.">
+<meta name="description" content="Screening Bitcoin transactions for money laundering on the public Elliptic dataset: a random forest reproduces the published benchmark on later time steps.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://sabrinapribadi.github.io/graph-fraud-detector/">
-<meta property="og:title" content="Graph Fraud Detector">
-<meta property="og:description" content="Screening Bitcoin transactions for money laundering on the public Elliptic dataset: illicit F1 0.815 on unseen time steps, matching the published benchmark. Static demo, no server.">
+<meta property="og:title" content="Bitcoin Fraud Screening">
+<meta property="og:description" content="Screening Bitcoin transactions for money laundering on the public Elliptic dataset: a random forest reproduces the published benchmark on later time steps.">
 <meta property="og:image" content="https://sabrinapribadi.github.io/graph-fraud-detector/assets/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="627">
-<meta property="og:image:alt" content="Top of the Graph Fraud Detector demo page">
+<meta property="og:image:alt" content="Top of the Bitcoin Fraud Screening page">
 <meta name="twitter:card" content="summary_large_image">
 <!-- /share preview -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:       #0e1117;
-      --surface:  #1a1d27;
-      --card:     #1e2130;
-      --border:   #2d3143;
-      --accent:   #FF4B4B;
-      --green:    #00c96f;
-      --yellow:   #ffd600;
-      --red:      #FF4B4B;
-      --text:     #f0f2f6;
-      --muted:    #8b9ab0;
-      --radius:   10px;
-    }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      line-height: 1.6;
-      min-height: 100vh;
-    }
-
-    /* ── Nav ── */
-    nav {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 60px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--text);
-      text-decoration: none;
-    }
-    .nav-brand svg { width: 28px; height: 28px; }
-    .nav-links { display: flex; align-items: center; gap: 1rem; }
-    .nav-links a {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-      transition: color .2s;
-    }
-    .nav-links a:hover { color: var(--text); }
-    .btn-swagger {
-      background: var(--accent);
-      color: #fff !important;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-weight: 600 !important;
-    }
-    .btn-swagger:hover { opacity: 0.88; }
-
-    /* ── Status pill ── */
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(0,201,111,0.12);
-      color: var(--green);
-      border: 1px solid rgba(0,201,111,0.3);
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .status-pill.loading { color: var(--yellow); background: rgba(255,214,0,0.1); border-color: rgba(255,214,0,0.3); }
-    .status-pill.error   { color: var(--red);    background: rgba(255,75,75,0.1);  border-color: rgba(255,75,75,0.3); }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    .dot.pulse { animation: pulse 1.8s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-    /* ── Layout ── */
-    main { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
-
-    /* ── Hero ── */
-    .hero { text-align: center; margin-bottom: 3.5rem; }
-    .hero h1 {
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.75rem;
-    }
-    .hero h1 span { color: var(--accent); }
-    .hero p { color: var(--muted); font-size: 1.05rem; max-width: 600px; margin: 0 auto 1.5rem; }
-    .hero-badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 0.75rem; }
-    .badge {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 12px;
-      font-size: 0.75rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    /* ── Section ── */
-    section { margin-bottom: 3rem; }
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .section-header h2 { font-size: 1.1rem; font-weight: 600; }
-    .section-tag {
-      font-size: 0.7rem;
-      font-weight: 600;
-      background: rgba(255,75,75,0.12);
-      color: var(--accent);
-      border: 1px solid rgba(255,75,75,0.25);
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* ── Metric cards ── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem 1.5rem;
-    }
-    .card-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.5rem; }
-    .card-value { font-size: 1.8rem; font-weight: 700; line-height: 1; }
-    .card-sub   { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
-    .card-value.red    { color: var(--red); }
-    .card-value.green  { color: var(--green); }
-    .card-value.yellow { color: var(--yellow); }
-
-    /* ── Model metrics row ── */
-    .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
-    .metric-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.9rem 1rem;
-      text-align: center;
-    }
-    .metric-item .val { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
-    .metric-item .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
-
-    /* ── Predict form ── */
-    .predict-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    @media (max-width: 680px) { .predict-grid { grid-template-columns: 1fr; } }
-    .form-panel {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-    }
-    .form-panel h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-    label { display: block; font-size: 0.825rem; color: var(--muted); margin-bottom: 5px; }
-    select, input[type="text"] {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      padding: 9px 12px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color .2s;
-      margin-bottom: 1rem;
-    }
-    select:focus, input[type="text"]:focus { border-color: var(--accent); }
-
-    .features-hint {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-bottom: 1rem;
-      line-height: 1.5;
-    }
-    .features-hint span { color: var(--text); }
-
-    .btn-predict {
-      width: 100%;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 7px;
-      padding: 11px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s, transform .1s;
-    }
-    .btn-predict:hover  { opacity: 0.88; }
-    .btn-predict:active { transform: scale(0.98); }
-    .btn-predict:disabled { opacity: 0.5; cursor: wait; }
-
-    /* ── Result panel ── */
-    .result-panel {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .result-empty {
-      text-align: center;
-      color: var(--muted);
-    }
-    .result-empty svg { width: 48px; height: 48px; margin-bottom: 0.75rem; opacity: 0.3; }
-    .result-empty p { font-size: 0.875rem; }
-
-    .risk-badge {
-      display: inline-block;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 6px 18px;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-    }
-    .risk-HIGH   { background: rgba(255,75,75,0.15); color: var(--red);    border: 1px solid rgba(255,75,75,0.4); }
-    .risk-MEDIUM { background: rgba(255,214,0,0.12); color: var(--yellow); border: 1px solid rgba(255,214,0,0.4); }
-    .risk-LOW    { background: rgba(0,201,111,0.12); color: var(--green);  border: 1px solid rgba(0,201,111,0.4); }
-
-    .prob-label  { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
-    .prob-bar-bg { background: var(--surface); border-radius: 20px; height: 10px; overflow: hidden; margin-bottom: 1rem; }
-    .prob-bar-fill {
-      height: 100%;
-      border-radius: 20px;
-      transition: width 0.7s ease;
-      background: var(--accent);
-    }
-    .result-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .result-row:last-child { border-bottom: none; }
-    .result-row .key  { color: var(--muted); }
-    .result-row .val  { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-    .result-row .val.mono { font-size: 0.78rem; }
-
-    .raw-toggle {
-      margin-top: 1rem;
-      font-size: 0.75rem;
-      color: var(--muted);
-      cursor: pointer;
-      text-decoration: underline;
-    }
-    .raw-json {
-      display: none;
-      background: var(--surface);
-      border-radius: 6px;
-      padding: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      color: var(--green);
-      margin-top: 6px;
-      white-space: pre;
-      overflow-x: auto;
-    }
-
-    /* ── Chart ── */
-    .chart-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-    }
-    .chart-wrap canvas { max-height: 280px; }
-    .chart-empty { text-align: center; color: var(--muted); padding: 3rem 1rem; font-size: 0.875rem; }
-
-    /* ── Insights ── */
-    .insights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-    .insight-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-    }
-    .insight-card .sev {
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      margin-bottom: 0.5rem;
-    }
-    .sev-HIGH     { color: var(--red); }
-    .sev-MEDIUM   { color: var(--yellow); }
-    .sev-LOW      { color: var(--green); }
-    .sev-CRITICAL { color: #e040fb; }
-    .insight-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; }
-    .insight-card p  { font-size: 0.8rem; color: var(--muted); }
-
-    /* ── Architecture note ── */
-    .arch-note {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-    }
-    .arch-flow {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      font-size: 0.82rem;
-      margin-top: 0.75rem;
-    }
-    .arch-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 14px;
-      text-align: center;
-    }
-    .arch-box .name { font-weight: 600; }
-    .arch-box .tech { font-size: 0.7rem; color: var(--muted); }
-    .arch-arrow { color: var(--muted); font-size: 1.2rem; }
-
-    /* ── Footer ── */
-    footer {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 2rem 1.5rem;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.8rem;
-    }
-    footer a { color: var(--accent); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-
-    /* ── Skeleton loader ── */
-    .skeleton {
-      background: linear-gradient(90deg, var(--surface) 25%, var(--card) 50%, var(--surface) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 6px;
-      height: 1.8rem;
-    }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  /* brief:css:start (rule R22, written by scripts/brief.py) */
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Results page (portfolio rules R3, R9, R10, R12). Generated from the shared results template. */
+:root {
+  --bg: #f5f4f0; --surface: #fffefb; --fg: #1d1f21; --muted: #5f6368; --line: #e2e0d8; --tint: #eceae3;
+  --accent: #a3322b; --accent-soft: #f6dedb;
+  --ok: #2c7a4b; --bad: #b23a2a; --c1: #a3322b; --c2: #b06a1f; --c3: #6b5ca5; --c4: #8a8f96;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15171a; --surface: #1d2024; --fg: #e8e6e1; --muted: #a2a6ab; --line: #2f3338; --tint: #24282c;
+  --accent: #f08a80; --accent-soft: #3a1d1b; --ok: #6fc28f; --bad: #e88a7a; --c1: #f08a80; --c2: #e0a35f; --c3: #a99be0; --c4: #8d939a;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15171a; --surface: #1d2024; --fg: #e8e6e1; --muted: #a2a6ab; --line: #2f3338; --tint: #24282c;
+  --accent: #f08a80; --accent-soft: #3a1d1b; --ok: #6fc28f; --bad: #e88a7a; --c1: #f08a80; --c2: #e0a35f; --c3: #a99be0; --c4: #8d939a;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font-body); }
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; }
+.eyebrow { font: 600 11.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(28px, 4.2vw, 40px)/1.15 var(--font-head); margin: 6px 0 4px; text-wrap: balance; }
+h2 { font: 700 24px/1.2 var(--font-head); margin: 0; text-wrap: balance; }
+h3 { font-size: 16px; margin: 0; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 18px; font-size: 14px; }
+.toc a { text-decoration: none; }
+.toc .n { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 5px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 600 11px var(--font-mono); }
+section.block { margin-top: 40px; display: grid; gap: 14px; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; }
+.sec-head .n { font: 600 13px var(--font-mono); color: var(--accent); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.cols > * { min-width: 0; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+ul.points { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; }
+.flow span { background: var(--tint); border-radius: 6px; padding: 4px 8px; }
+.flow span.now { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.flow i { color: var(--muted); font-style: normal; }
+.scroll { overflow-x: auto; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.chosen { color: var(--accent); font-weight: 600; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.tile b { font: 600 26px/1.1 var(--font-mono); color: var(--accent); }
+.tile span { font-size: 13.5px; color: var(--muted); }
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+.chart .sub { font-size: 13px; color: var(--muted); margin: 0; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart svg text { fill: var(--fg); font: 12px var(--font-body); }
+.chart svg text.dim { fill: var(--muted); }
+.chart svg .axis { stroke: var(--line); }
+.chart svg [data-tip] { cursor: default; outline: none; }
+.chart svg [data-tip]:focus-visible { stroke: var(--fg); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+.slider { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13.5px; }
+.slider input { flex: 1 1 220px; accent-color: var(--accent); }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+details > summary { cursor: pointer; font-weight: 600; }
+details > .body { display: grid; gap: 10px; margin-top: 10px; font-size: 14px; }
+.faq { display: grid; gap: 8px; }
+dl.gloss { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+dl.gloss dt { font-weight: 600; } dl.gloss dd { margin: 0; }
+.tip { position: fixed; z-index: 10; max-width: 300px; background: var(--fg); color: var(--bg); font-size: 12.5px; line-height: 1.45; padding: 8px 10px; border-radius: 8px; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.tip b { display: block; margin-bottom: 2px; }
+footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+@media (max-width: 560px) { .wrap { padding-inline: 16px; } dl.gloss { grid-template-columns: 1fr; } }
+/* brief:css:start (rule R22, written by scripts/brief.py) */
 .brief { display: grid; gap: 12px; padding-block: 18px 4px; text-align: left; }
 .brief a { color: var(--accent); }
 .brief-list { list-style: none; margin: 0; padding: 0 !important; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
@@ -396,222 +105,138 @@
 .brief-proof { font-size: 12px; margin-left: 4px; white-space: nowrap; }
 /* brief:css:end */
 </style>
-</head>
-<body>
 
-<!-- ── Nav ── -->
-<nav>
-  <a class="nav-brand" href="#">
-    <svg viewBox="0 0 32 32" fill="none">
-      <circle cx="16" cy="16" r="15" fill="#FF4B4B" opacity=".12"/>
-      <circle cx="16" cy="16" r="5" fill="#FF4B4B"/>
-      <line x1="16" y1="11" x2="8" y2="5"  stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
-      <line x1="16" y1="11" x2="24" y2="5" stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
-      <line x1="16" y1="21" x2="8" y2="27" stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
-      <line x1="16" y1="21" x2="24" y2="27" stroke="#FF4B4B" stroke-width="1.5" opacity=".6"/>
-      <circle cx="8"  cy="5"  r="2.5" fill="#FF4B4B" opacity=".5"/>
-      <circle cx="24" cy="5"  r="2.5" fill="#FF4B4B" opacity=".5"/>
-      <circle cx="8"  cy="27" r="2.5" fill="#FF4B4B" opacity=".5"/>
-      <circle cx="24" cy="27" r="2.5" fill="#FF4B4B" opacity=".5"/>
-    </svg>
-    Graph Fraud Detector
-  </a>
-  <div class="nav-links">
-    <span id="apiStatus" class="status-pill"><span class="dot"></span>Static demo</span>
-    <a href="https://github.com/sabrinapribadi/graph-fraud-detector" target="_blank">GitHub</a>
-    <a href="https://github.com/sabrinapribadi/graph-fraud-detector#run-the-api-locally" target="_blank" class="btn-swagger">Run the API locally</a>
-  </div>
-</nav>
-
-<!-- ── Main ── -->
-<main>
-
-  <!-- Hero -->
-  <div class="hero">
-    <h1>Screening Bitcoin transactions for<br><span>money laundering</span></h1>
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Financial crime · anti-money laundering · graph data</span>
+  <h1>How many illicit Bitcoin payments can a screening model catch?</h1>
 <!-- brief:start -->
-<section class="brief" id="brief" aria-label="Project at a glance"><span class="eyebrow">At a glance</span><ol class="brief-list"><li><span class="brief-w">1 · What</span><span class="brief-main">A Bitcoin fraud detector: graph and tabular models score transactions, with a dashboard, an AI assistant and risk analytics.</span></li><li><span class="brief-w">2 · Why</span><span class="brief-main">Illicit payments hide in a 200,000-transaction graph; investigators need a ranked, explained shortlist instead of raw flows.</span></li><li><span class="brief-w">3 · Who</span><span class="brief-main">Users: anti-money-laundering analysts and investigators.</span><span class="brief-sub">Data: the public Elliptic dataset, 203,769 transactions; 4,545 labelled illicit and 42,019 licit (Weber et al. 2019).</span></li><li><span class="brief-w">4 · Where</span><span class="brief-main"><a href="https://graph-fraud-detector.streamlit.app">Dashboard</a> on Streamlit Community Cloud; <a href="https://sabrinapribadi.github.io/graph-fraud-detector/">static demo</a> on GitHub Pages; the API runs locally.</span></li><li><span class="brief-w">5 · When it fails</span><span class="brief-main">Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way.</span><span class="brief-sub">Every model collapses after a dark-market shutdown at time step 43 (F1 0.904 before, 0.031 after). No live A/B test: historical data.</span></li><li><span class="brief-w">6 · How</span><span class="brief-main">Random forest on 166 features with the dataset authors&#x27; time split; GraphSAGE and GAT on the graph; a bandit picks the alert threshold.</span><span class="brief-sub">Result: illicit F1 0.815 on later time steps (published 0.788); F1 is the balance of catching fraud and avoiding false alarms (1 is perfect).</span></li></ol><details class="brief-skills" open><summary>Skills applied, with proof</summary><ul><li><b>Graph machine learning</b> GraphSAGE and GAT on the transaction graph <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/gnn_model.py">gnn_model.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/advanced_gnn.py">advanced_gnn.py</a></li><li><b>Machine learning and evaluation</b> random forest, time-based split, per-step F1, replication of the published benchmark <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-004-label-fix-and-evaluation.md">ADR-004</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/scripts/evaluate_models.py">evaluate_models.py</a></li><li><b>Reinforcement learning</b> LinUCB contextual bandit for the alert threshold <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-001-rl-threshold-bandit.md">ADR-001</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/rl/bandit.py">bandit.py</a></li><li><b>Quantitative risk</b> Monte Carlo loss, value at risk, stress tests, Basel III capital <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/risk_analysis.py">risk_analysis.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/regulatory_capital.py">regulatory_capital.py</a></li><li><b>GenAI and agents</b> LangChain agent with 9 tools, retrieval over a fraud knowledge base <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/fraud_agent.py">fraud_agent.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/rag_agent.py">rag_agent.py</a></li><li><b>Data engineering and services</b> FastAPI service, medallion layers (document store and Postgres) <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-002-mongodb-alert-layer.md">ADR-002</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-003-postgresql-gold-layer.md">ADR-003</a></li><li><b>CI/CD</b> GitHub Actions lint and tests on every push; static demo on Pages <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/.github/workflows/ci.yml">ci.yml</a></li></ul></details></section>
+<section class="brief" id="brief" aria-label="Project at a glance"><span class="eyebrow">At a glance</span><ol class="brief-list"><li><span class="brief-w">1 · What</span><span class="brief-main">A Bitcoin fraud detector: graph and tabular models score transactions, with a dashboard, an AI assistant and risk analytics.</span></li><li><span class="brief-w">2 · Why</span><span class="brief-main">Illicit payments hide in a 200,000-transaction graph; investigators need a ranked, explained shortlist instead of raw flows.</span></li><li><span class="brief-w">3 · Who</span><span class="brief-main">Users: anti-money-laundering analysts and investigators.</span><span class="brief-sub">Data: the public Elliptic dataset, 203,769 transactions; 4,545 labelled illicit and 42,019 licit (Weber et al. 2019).</span></li><li><span class="brief-w">4 · Where</span><span class="brief-main"><a href="https://sabrinapribadi.github.io/graph-fraud-detector/">Results page</a>, <a href="https://sabrinapribadi.github.io/graph-fraud-detector/build.html">technical walkthrough</a> and <a href="https://sabrinapribadi.github.io/graph-fraud-detector/demo.html">transaction demo</a> on GitHub Pages; <a href="https://graph-fraud-detector.streamlit.app">dashboard</a> on Streamlit Community Cloud; the API runs locally.</span></li><li><span class="brief-w">5 · When it fails</span><span class="brief-main">Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way.</span><span class="brief-sub">Every model collapses after a dark-market shutdown at time step 43 (F1 0.904 before, 0.031 after). No live A/B test: historical data.</span></li><li><span class="brief-w">6 · How</span><span class="brief-main">Random forest on 166 features with the dataset authors&#x27; time split; GraphSAGE and GAT on the graph; a bandit picks the alert threshold.</span><span class="brief-sub">Result: illicit F1 0.815 on later time steps (published 0.788); F1 is the balance of catching fraud and avoiding false alarms (1 is perfect).</span></li></ol><details class="brief-skills" open><summary>Skills applied, with proof</summary><ul><li><b>Graph machine learning</b> GraphSAGE and GAT on the transaction graph <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/gnn_model.py">gnn_model.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/advanced_gnn.py">advanced_gnn.py</a></li><li><b>Machine learning and evaluation</b> random forest, time-based split, per-step F1, replication of the published benchmark <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-004-label-fix-and-evaluation.md">ADR-004</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/scripts/evaluate_models.py">evaluate_models.py</a></li><li><b>Reinforcement learning</b> LinUCB contextual bandit for the alert threshold <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-001-rl-threshold-bandit.md">ADR-001</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/rl/bandit.py">bandit.py</a></li><li><b>Quantitative risk</b> Monte Carlo loss, value at risk, stress tests, Basel III capital <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/risk_analysis.py">risk_analysis.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/regulatory_capital.py">regulatory_capital.py</a></li><li><b>GenAI and agents</b> LangChain agent with 9 tools, retrieval over a fraud knowledge base <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/fraud_agent.py">fraud_agent.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/rag_agent.py">rag_agent.py</a></li><li><b>Data engineering and services</b> FastAPI service, medallion layers (document store and Postgres) <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-002-mongodb-alert-layer.md">ADR-002</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-003-postgresql-gold-layer.md">ADR-003</a></li><li><b>CI/CD</b> GitHub Actions lint and tests on every push; static demo on Pages <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/.github/workflows/ci.yml">ci.yml</a></li></ul></details></section>
 <!-- brief:end -->
 
-    <p>
-      Public Elliptic dataset (Weber et al. 2019). A static demo: every number below is precomputed by the
-      repository's scripts. Run the FastAPI service locally for live calls.
-    </p>
-    <div class="hero-badges">
-      <span class="badge">Random forest benchmark</span>
-      <span class="badge">PyTorch + GraphSAGE</span>
-      <span class="badge">FastAPI (local)</span>
-      <span class="badge">Streamlit dashboard</span>
-      <span class="badge">GitHub Pages · no server</span>
-    </div>
-  </div>
-
-  <!-- Section 1 — Dataset and model quality -->
-  <section>
-    <div class="section-header">
-      <h2>Dataset and model quality</h2>
-      <span class="section-tag">data/eval_results.json</span>
-    </div>
-    <div class="cards" id="statsCards"></div>
-    <div class="metrics-row" id="modelMetrics"></div>
-    <p class="features-hint" id="metricsNote"></p>
-  </section>
-
-  <!-- Section 2 — Example predictions -->
-  <section>
-    <div class="section-header">
-      <h2>Example predictions on unseen transactions</h2>
-      <span class="section-tag">random forest · time steps 35–42</span>
-    </div>
-    <div class="predict-grid">
-      <div class="form-panel">
-        <h3>Pick a transaction</h3>
-        <label for="nodeSelect">Held-out transaction (true label known)</label>
-        <select id="nodeSelect"></select>
-        <div class="features-hint">
-          The model never saw these time steps in training. Its probability is shown next to the label investigators gave.
-        </div>
-        <button class="btn-predict" id="predictBtn" onclick="predict()">Show the model's answer</button>
-      </div>
-      <div class="result-panel" id="resultPanel">
-        <div class="result-empty" id="resultEmpty">
-          <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2"/><path d="M24 14v12M24 34v1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-          <p>Pick a transaction to see the model's<br>fraud probability next to the true label.</p>
-        </div>
-        <div id="resultContent" style="display:none"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section 3 — F1 by time step -->
-  <section>
-    <div class="section-header">
-      <h2>How well it finds illicit transactions, step by step</h2>
-      <span class="section-tag">temporal split · Weber et al. 2019</span>
-    </div>
-    <div class="chart-wrap">
-      <canvas id="dailyChart"></canvas>
-    </div>
-    <p class="features-hint" id="stepNote"></p>
-  </section>
-
-  <!-- Section 4 — Auto-discovered patterns -->
-  <section>
-    <div class="section-header">
-      <h2>Auto-discovered graph patterns</h2>
-      <span class="section-tag">precomputed</span>
-    </div>
-    <div class="insights-grid" id="insightsGrid"></div>
-  </section>
-
-  <!-- Section 5 — Architecture -->
-  <section>
-    <div class="section-header">
-      <h2>System architecture</h2>
-    </div>
-    <div class="arch-note">
-      <p style="font-size:0.85rem;color:var(--muted)">
-        Scripts train and evaluate the models and write JSON; this page and the Streamlit dashboard read it, so nothing
-        runs a paid server. The FastAPI service (11 endpoints) and its optional MongoDB and PostgreSQL layers run locally or in Docker.
-      </p>
-      <div class="arch-flow">
-        <div class="arch-box"><div class="name">Elliptic dataset</div><div class="tech">203,769 transactions</div></div>
-        <span class="arch-arrow">→</span>
-        <div class="arch-box"><div class="name">Random forest · GraphSAGE</div><div class="tech">scikit-learn · PyTorch</div></div>
-        <span class="arch-arrow">→</span>
-        <div class="arch-box"><div class="name">Evaluation scripts</div><div class="tech">temporal split, ADR-004</div></div>
-        <span class="arch-arrow">→</span>
-        <div class="arch-box"><div class="name">GitHub Pages</div><div class="tech">static, $0</div></div>
-        <span class="arch-arrow">→</span>
-        <div class="arch-box"><div class="name">FastAPI</div><div class="tech">local or Docker</div></div>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<!-- ── Footer ── -->
-<footer>
-  <p>
-    Built by <strong style="color:var(--text)">Sabrina Pribadi</strong> ·
-    <a href="https://github.com/sabrinapribadi/graph-fraud-detector">GitHub</a> ·
-    <a href="https://graph-fraud-detector.streamlit.app">Dashboard</a>
-  </p>
-  <p style="margin-top:6px">
-    Data: Elliptic dataset, Weber et al. (2019), arXiv 1908.02591 · scikit-learn · PyTorch · FastAPI · GitHub Pages
-  </p>
-</footer>
-
+  <nav class="toc" aria-label="Sections">
+    <a href="#problem"><span class="n">1</span>Problem</a><a href="#data"><span class="n">2</span>Data</a><a href="#approach"><span class="n">3</span>Approach</a>
+    <a href="#solution"><span class="n">4</span>Solution</a><a href="#take"><span class="n">5</span>Our take</a><a href="build.html">Technical walkthrough →</a>
+  </nav>
+</header>
+<main id="page"></main>
+<footer id="foot"></footer>
+</div>
+<div class="tip" id="tip" hidden></div>
 <script>
-  const pct = v => (100 * v).toFixed(1) + '%';
-  let DEMO = null;
-
-  async function boot() {
-    const pill = document.getElementById('apiStatus');
-    pill.className = 'status-pill';
-    pill.innerHTML = '<span class="dot"></span>Static demo · no server';
-    DEMO = await (await fetch('data/demo.json')).json();
-    const s = DEMO.stats, rf = DEMO.evaluation.random_forest_temporal, gs = DEMO.evaluation.graphsage_as_built;
-    document.getElementById('statsCards').innerHTML = [
-      ['Transactions', s.total_nodes.toLocaleString(), 'Bitcoin transactions (nodes)'],
-      ['Payment links', s.total_edges.toLocaleString(), 'Directed flows between them'],
-      ['Illicit', s.illicit_count.toLocaleString(), 'Labelled illicit (class 1)'],
-      ['Illicit share', s.fraud_rate, `of ${(s.illicit_count + s.licit_count).toLocaleString()} labelled`]
-    ].map(c => `<div class="card"><div class="card-label">${c[0]}</div><div class="card-value">${c[1]}</div><div class="card-sub">${c[2]}</div></div>`).join('');
-    document.getElementById('modelMetrics').innerHTML = [
-      [rf.f1.toFixed(3), 'Illicit F1 (paper: 0.788)'], [pct(rf.precision), 'Precision'], [pct(rf.recall), 'Recall'],
-      [rf.f1_after_shutdown.toFixed(2), 'F1 after step 43'], [gs.auc.toFixed(3), 'GraphSAGE AUC*']
-    ].map(m => `<div class="metric-item"><div class="val">${m[0]}</div><div class="lbl">${m[1]}</div></div>`).join('');
-    document.getElementById('metricsNote').innerHTML =
-      `Random forest trained on time steps 1–34, tested on 35–49 (the dataset authors' protocol). ` +
-      `<b>Precision ${pct(rf.precision)}</b>: of transactions it flags, that share is truly illicit. ` +
-      `<b>Recall ${pct(rf.recall)}</b>: of illicit transactions, that share is flagged. F1 balances the two (1.0 is perfect). ` +
-      `*GraphSAGE is scored on a balanced sample where half the transactions are illicit, which flatters it.`;
-    const sel = document.getElementById('nodeSelect');
-    sel.innerHTML = DEMO.examples.map((e, i) => `<option value="${i}">${e.tx_id} · step ${e.time_step} · labelled ${e.true_label}</option>`).join('');
-    drawSteps(rf);
-    const ins = DEMO.insights || [];
-    document.getElementById('insightsGrid').innerHTML = ins.length ? ins.slice(0, 6).map(i => `
-      <div class="insight-card"><div class="sev sev-${i.severity || 'MEDIUM'}">${i.severity || 'MEDIUM'} · ${i.category || ''}</div>
-      <h4>${i.title || ''}</h4><p>${i.description || ''}</p></div>`).join('')
-      : '<p style="color:var(--muted);font-size:.875rem">No patterns found.</p>';
-  }
-
-  function drawSteps(rf) {
-    const steps = Object.keys(rf.f1_by_step), vals = steps.map(k => rf.f1_by_step[k]);
-    new Chart(document.getElementById('dailyChart'), {
-      type: 'bar',
-      data: { labels: steps.map(k => 'step ' + k), datasets: [{ label: 'Illicit F1', data: vals,
-        backgroundColor: steps.map(k => +k >= 43 ? 'rgba(255,75,75,0.75)' : 'rgba(0,201,111,0.7)'), borderRadius: 4 }] },
-      options: { responsive: true, plugins: { legend: { display: false },
-        tooltip: { callbacks: { afterBody: items => +steps[items[0].dataIndex] >= 43 ? ['After the dark-market shutdown: new behaviour the model never saw.'] : ['Before the shutdown.'] } } },
-        scales: { x: { ticks: { color: '#8b9ab0' }, grid: { color: '#2d3143' } },
-                  y: { min: 0, max: 1, ticks: { color: '#8b9ab0' }, grid: { color: '#2d3143' } } } }
-    });
-    document.getElementById('stepNote').textContent =
-      `F1 ${rf.f1_before_shutdown.toFixed(2)} before step 43, ${rf.f1_after_shutdown.toFixed(2)} after: a dark market closed at step 43 and ` +
-      `illicit behaviour changed (Weber et al. 2019 report the same collapse). A deployed model would need retraining after such events.`;
-  }
-
-  function predict() {
-    const e = DEMO.examples[+document.getElementById('nodeSelect').value];
-    const barColor = e.risk_level === 'HIGH' ? '#FF4B4B' : e.risk_level === 'MEDIUM' ? '#ffd600' : '#00c96f';
-    const right = e.prediction === e.true_label;
-    document.getElementById('resultEmpty').style.display = 'none';
-    const box = document.getElementById('resultContent');
-    box.innerHTML = `
-      <div style="margin-bottom:1rem"><span class="risk-badge risk-${e.risk_level}">${e.risk_level} RISK — predicted ${e.prediction}</span></div>
-      <div class="prob-label">Fraud probability — ${pct(e.fraud_probability)}</div>
-      <div class="prob-bar-bg"><div class="prob-bar-fill" id="probFill" style="width:0%;background:${barColor}"></div></div>
-      <div class="result-row"><span class="key">Transaction</span><span class="val mono">${e.tx_id}</span></div>
-      <div class="result-row"><span class="key">Time step</span><span class="val">${e.time_step} (unseen in training)</span></div>
-      <div class="result-row"><span class="key">True label</span><span class="val">${e.true_label}</span></div>
-      <div class="result-row"><span class="key">Model was</span><span class="val">${right ? 'right' : 'wrong'}</span></div>`;
-    box.style.display = 'block';
-    setTimeout(() => { const f = document.getElementById('probFill'); if (f) f.style.width = pct(e.fraud_probability); }, 50);
-  }
-
-  boot();
+const PAGE = {"problem": {"points": ["**Money laundering** through Bitcoin hides illicit payments among hundreds of thousands of ordinary ones.", "Analysts review alerts by hand: too many false alarms waste their time; missed cases carry the risk.", "On this dataset, published models collapse when criminal behaviour changes (Weber et al. 2019)."], "today": ["Rules flag transactions", "Analysts work long queues", "New schemes slip through"], "project": ["Score every transaction", "Set the threshold by capacity", "Watch for behaviour shifts"], "need": "What a team needs: how many cases a threshold catches, how many false alarms it costs, and when the model stops working."}, "data": {"head": ["Item", "Value"], "rows": [["Source", "Elliptic dataset (Weber et al. 2019), public"], ["Transactions", "203,769, linked by 234,355 payments"], ["Labels", "4,545 illicit (2%), 42,019 licit (21%), 157,205 unknown"], ["Features", "166 per transaction, anonymised"], ["Time", "49 time steps, about two weeks apart"], ["Test design", "Train on steps 1–34, test on 35–49 (the dataset authors' protocol)"], ["Leakage guard", "Every test step is later than every training step"]]}, "dataNotes": ["**Illicit F1:** the balance of catching illicit payments (recall) and keeping alerts correct (precision); 1 is perfect."], "pipeline": ["Fix and test labels", "Split by time", "Random forest, 166 features", "Check against the paper", "Score each time step", "Set a threshold"], "choices": {"head": ["Choice", "Tried", "Chose", "Deciding number"], "chosen": 2, "rows": [["Label mapping", "As loaded vs the dataset's definition", "Class \"1\" = illicit", "Counts match the paper: 4,545 / 42,019"], ["Benchmark model", "Random forest; GraphSAGE (dashboard)", "Random forest", "Illicit F1 0.815 vs published 0.788"], ["Graph network evaluation", "Balanced random sample vs the time split", "Report with a caveat", "GraphSAGE AUC 0.956 on a balanced sample (flattering)"], ["Alert threshold", "0.05 to 0.95", "Your call (what-if below)", "0.55: 780 caught, 35 false alarms"], ["Hosting", "Paid app host; free tiers", "Streamlit and GitHub Pages", "$0 (the paid host ran out of memory at 512 MB)"]]}, "tiles": [["0.815", "illicit F1 on later time steps (published: 0.788); 1 is perfect"], ["72%", "of illicit payments caught at the default threshold, with 93% of alerts correct"], ["0.90 → 0.03", "F1 before vs after a dark market closed: every model fails on new behaviour"]], "charts": [{"kind": "steps", "id": "threshold", "title": "What-if: pick an alert threshold", "sub": "Transactions scoring above the threshold are flagged for review. Test period: time steps 35–49, 1,083 illicit among 16,670. Hover a bar.", "sliderLabel": "Threshold", "start": 9, "max": 6547.8, "panels": [{"label": "0.05", "bars": [{"label": "Illicit caught", "v": 964, "text": "964", "color": "c1", "tip": ["964 of 1,083 illicit flagged", "Recall 89%"]}, {"label": "Illicit missed", "v": 119, "text": "119", "color": "c2", "tip": ["119 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 6236, "text": "6,236", "color": "c4", "tip": ["6,236 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.05: 7,200 flagged; **13% of alerts are illicit**; **89% of illicit caught**."}, {"label": "0.10", "bars": [{"label": "Illicit caught", "v": 891, "text": "891", "color": "c1", "tip": ["891 of 1,083 illicit flagged", "Recall 82%"]}, {"label": "Illicit missed", "v": 192, "text": "192", "color": "c2", "tip": ["192 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 3281, "text": "3,281", "color": "c4", "tip": ["3,281 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.10: 4,172 flagged; **21% of alerts are illicit**; **82% of illicit caught**."}, {"label": "0.15", "bars": [{"label": "Illicit caught", "v": 856, "text": "856", "color": "c1", "tip": ["856 of 1,083 illicit flagged", "Recall 79%"]}, {"label": "Illicit missed", "v": 227, "text": "227", "color": "c2", "tip": ["227 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 2283, "text": "2,283", "color": "c4", "tip": ["2,283 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.15: 3,139 flagged; **27% of alerts are illicit**; **79% of illicit caught**."}, {"label": "0.20", "bars": [{"label": "Illicit caught", "v": 829, "text": "829", "color": "c1", "tip": ["829 of 1,083 illicit flagged", "Recall 77%"]}, {"label": "Illicit missed", "v": 254, "text": "254", "color": "c2", "tip": ["254 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 1340, "text": "1,340", "color": "c4", "tip": ["1,340 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.20: 2,169 flagged; **38% of alerts are illicit**; **77% of illicit caught**."}, {"label": "0.25", "bars": [{"label": "Illicit caught", "v": 810, "text": "810", "color": "c1", "tip": ["810 of 1,083 illicit flagged", "Recall 75%"]}, {"label": "Illicit missed", "v": 273, "text": "273", "color": "c2", "tip": ["273 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 925, "text": "925", "color": "c4", "tip": ["925 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.25: 1,735 flagged; **47% of alerts are illicit**; **75% of illicit caught**."}, {"label": "0.30", "bars": [{"label": "Illicit caught", "v": 806, "text": "806", "color": "c1", "tip": ["806 of 1,083 illicit flagged", "Recall 74%"]}, {"label": "Illicit missed", "v": 277, "text": "277", "color": "c2", "tip": ["277 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 510, "text": "510", "color": "c4", "tip": ["510 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.30: 1,316 flagged; **61% of alerts are illicit**; **74% of illicit caught**."}, {"label": "0.35", "bars": [{"label": "Illicit caught", "v": 799, "text": "799", "color": "c1", "tip": ["799 of 1,083 illicit flagged", "Recall 74%"]}, {"label": "Illicit missed", "v": 284, "text": "284", "color": "c2", "tip": ["284 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 352, "text": "352", "color": "c4", "tip": ["352 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.35: 1,151 flagged; **69% of alerts are illicit**; **74% of illicit caught**."}, {"label": "0.40", "bars": [{"label": "Illicit caught", "v": 790, "text": "790", "color": "c1", "tip": ["790 of 1,083 illicit flagged", "Recall 73%"]}, {"label": "Illicit missed", "v": 293, "text": "293", "color": "c2", "tip": ["293 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 191, "text": "191", "color": "c4", "tip": ["191 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.40: 981 flagged; **81% of alerts are illicit**; **73% of illicit caught**."}, {"label": "0.45", "bars": [{"label": "Illicit caught", "v": 788, "text": "788", "color": "c1", "tip": ["788 of 1,083 illicit flagged", "Recall 73%"]}, {"label": "Illicit missed", "v": 295, "text": "295", "color": "c2", "tip": ["295 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 111, "text": "111", "color": "c4", "tip": ["111 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.45: 899 flagged; **88% of alerts are illicit**; **73% of illicit caught**."}, {"label": "0.50", "bars": [{"label": "Illicit caught", "v": 784, "text": "784", "color": "c1", "tip": ["784 of 1,083 illicit flagged", "Recall 72%"]}, {"label": "Illicit missed", "v": 299, "text": "299", "color": "c2", "tip": ["299 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 57, "text": "57", "color": "c4", "tip": ["57 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.50: 841 flagged; **93% of alerts are illicit**; **72% of illicit caught**."}, {"label": "0.55", "bars": [{"label": "Illicit caught", "v": 780, "text": "780", "color": "c1", "tip": ["780 of 1,083 illicit flagged", "Recall 72%"]}, {"label": "Illicit missed", "v": 303, "text": "303", "color": "c2", "tip": ["303 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 35, "text": "35", "color": "c4", "tip": ["35 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.55: 815 flagged; **96% of alerts are illicit**; **72% of illicit caught**."}, {"label": "0.60", "bars": [{"label": "Illicit caught", "v": 773, "text": "773", "color": "c1", "tip": ["773 of 1,083 illicit flagged", "Recall 71%"]}, {"label": "Illicit missed", "v": 310, "text": "310", "color": "c2", "tip": ["310 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 18, "text": "18", "color": "c4", "tip": ["18 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.60: 791 flagged; **98% of alerts are illicit**; **71% of illicit caught**."}, {"label": "0.65", "bars": [{"label": "Illicit caught", "v": 765, "text": "765", "color": "c1", "tip": ["765 of 1,083 illicit flagged", "Recall 71%"]}, {"label": "Illicit missed", "v": 318, "text": "318", "color": "c2", "tip": ["318 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 13, "text": "13", "color": "c4", "tip": ["13 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.65: 778 flagged; **98% of alerts are illicit**; **71% of illicit caught**."}, {"label": "0.70", "bars": [{"label": "Illicit caught", "v": 757, "text": "757", "color": "c1", "tip": ["757 of 1,083 illicit flagged", "Recall 70%"]}, {"label": "Illicit missed", "v": 326, "text": "326", "color": "c2", "tip": ["326 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 4, "text": "4", "color": "c4", "tip": ["4 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.70: 761 flagged; **99% of alerts are illicit**; **70% of illicit caught**."}, {"label": "0.75", "bars": [{"label": "Illicit caught", "v": 753, "text": "753", "color": "c1", "tip": ["753 of 1,083 illicit flagged", "Recall 70%"]}, {"label": "Illicit missed", "v": 330, "text": "330", "color": "c2", "tip": ["330 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 1, "text": "1", "color": "c4", "tip": ["1 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.75: 754 flagged; **100% of alerts are illicit**; **70% of illicit caught**."}, {"label": "0.80", "bars": [{"label": "Illicit caught", "v": 733, "text": "733", "color": "c1", "tip": ["733 of 1,083 illicit flagged", "Recall 68%"]}, {"label": "Illicit missed", "v": 350, "text": "350", "color": "c2", "tip": ["350 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 1, "text": "1", "color": "c4", "tip": ["1 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.80: 734 flagged; **100% of alerts are illicit**; **68% of illicit caught**."}, {"label": "0.85", "bars": [{"label": "Illicit caught", "v": 717, "text": "717", "color": "c1", "tip": ["717 of 1,083 illicit flagged", "Recall 66%"]}, {"label": "Illicit missed", "v": 366, "text": "366", "color": "c2", "tip": ["366 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 1, "text": "1", "color": "c4", "tip": ["1 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.85: 718 flagged; **100% of alerts are illicit**; **66% of illicit caught**."}, {"label": "0.90", "bars": [{"label": "Illicit caught", "v": 681, "text": "681", "color": "c1", "tip": ["681 of 1,083 illicit flagged", "Recall 63%"]}, {"label": "Illicit missed", "v": 402, "text": "402", "color": "c2", "tip": ["402 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 0, "text": "0", "color": "c4", "tip": ["0 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.90: 681 flagged; **100% of alerts are illicit**; **63% of illicit caught**."}, {"label": "0.95", "bars": [{"label": "Illicit caught", "v": 602, "text": "602", "color": "c1", "tip": ["602 of 1,083 illicit flagged", "Recall 56%"]}, {"label": "Illicit missed", "v": 481, "text": "481", "color": "c2", "tip": ["481 illicit not flagged", "Each one is a missed case"]}, {"label": "False alarms", "v": 0, "text": "0", "color": "c4", "tip": ["0 licit transactions flagged", "Analyst time spent for nothing"]}], "note": "At 0.95: 602 flagged; **100% of alerts are illicit**; **56% of illicit caught**."}]}, {"kind": "bars", "id": "by-step", "title": "Quality by time step: a market closure breaks the model", "sub": "Illicit F1 per time step (1 is perfect). A dark market closed at step 43 (Weber et al. 2019); after it, behaviour changed. Hover a bar.", "max": 1.05, "rows": [{"label": "Step 35", "v": 0.969, "text": "0.97", "color": "c1", "tip": ["F1 0.97", "Before the closure"]}, {"label": "Step 36", "v": 0.892, "text": "0.89", "color": "c1", "tip": ["F1 0.89", "Before the closure"]}, {"label": "Step 37", "v": 0.758, "text": "0.76", "color": "c1", "tip": ["F1 0.76", "Before the closure"]}, {"label": "Step 38", "v": 0.943, "text": "0.94", "color": "c1", "tip": ["F1 0.94", "Before the closure"]}, {"label": "Step 39", "v": 0.944, "text": "0.94", "color": "c1", "tip": ["F1 0.94", "Before the closure"]}, {"label": "Step 40", "v": 0.781, "text": "0.78", "color": "c1", "tip": ["F1 0.78", "Before the closure"]}, {"label": "Step 41", "v": 0.951, "text": "0.95", "color": "c1", "tip": ["F1 0.95", "Before the closure"]}, {"label": "Step 42", "v": 0.87, "text": "0.87", "color": "c1", "tip": ["F1 0.87", "Before the closure"]}, {"label": "Step 43", "v": 0.0, "text": "0.00", "color": "c2", "tip": ["F1 0.00", "After the closure"]}, {"label": "Step 44", "v": 0.056, "text": "0.06", "color": "c2", "tip": ["F1 0.06", "After the closure"]}, {"label": "Step 45", "v": 0.0, "text": "0.00", "color": "c2", "tip": ["F1 0.00", "After the closure"]}, {"label": "Step 46", "v": 0.333, "text": "0.33", "color": "c2", "tip": ["F1 0.33", "After the closure"]}, {"label": "Step 47", "v": 0.0, "text": "0.00", "color": "c2", "tip": ["F1 0.00", "After the closure"]}, {"label": "Step 48", "v": 0.0, "text": "0.00", "color": "c2", "tip": ["F1 0.00", "After the closure"]}, {"label": "Step 49", "v": 0.034, "text": "0.03", "color": "c2", "tip": ["F1 0.03", "After the closure"]}]}], "caveats": ["**Anonymised features:** Elliptic hides what the 166 features mean, so alerts cannot be explained in business terms.", "**Behaviour shifts break every model:** F1 falls to 0.03 after step 43; production needs drift checks and retraining.", "**GraphSAGE's AUC 0.956** comes from a balanced random sample (half the test nodes illicit); it is not comparable.", "**Labels were inverted** in the original code; every earlier figure was withdrawn and remeasured (ADR-004)."], "faq": [["Why is the random forest the headline, not the graph network?", "On the authors' time split, the forest is the published benchmark (0.788) and ours reproduces it (0.815). The graph network was only measured on a balanced random sample, which flatters it."], ["What happened at step 43?", "A dark market closed; behaviour changed, and models trained on earlier steps stopped recognising illicit payments (Weber et al. 2019)."], ["Which threshold should we use?", "It depends on analyst capacity. 0.55 flags 815 and catches 780 of 1,083; 0.15 catches 856 but flags 3,139. Use the slider."], ["Is the label bug fixed everywhere?", "Yes. A test pins the published counts (4,545 illicit, 42,019 licit), and every number on this page reads one result file."], ["Can I see real transactions?", "Yes: the [held-out transaction demo](demo.html) shows real test-period transactions with their scores."]], "take": ["**Use the random forest as the screening baseline;** it reproduces the published result on later time steps.", "**Set the alert threshold by analyst capacity,** not by default: the what-if shows the catch versus false-alarm trade.", "**Plan for behaviour shifts:** retrain and monitor; one market closure took F1 from 0.90 to 0.03."], "changeMind": ["A graph network that beats the forest on the authors' time split.", "Drift monitoring that flags a shift like step 43 within one time step."], "more": [{"id": "more-demo", "title": "More: real held-out transactions and the 15-tab dashboard", "points": ["[Held-out transaction demo](demo.html): real test-period transactions with their scores, no server.", "[15-tab dashboard](https://graph-fraud-detector.streamlit.app) on Streamlit Community Cloud: risk analytics, stress tests, an AI assistant and the threshold bandit (sleeps after 12 hours without traffic)."]}, {"id": "more-appendix", "title": "Technical appendix: ours vs published, graph network, counts", "table": {"head": ["Measure", "Ours (random forest)", "Published (Weber et al. 2019)"], "num": [1, 2], "rows": [["Illicit precision", "0.932", "0.956"], ["Illicit recall", "0.724", "0.670"], ["Illicit F1", "0.815", "0.788"], ["AUC", "0.902", "—"], ["F1 before / after step 43", "0.90 / 0.03", "collapse reported"]]}, "points": ["**GraphSAGE as built** (balanced 3,000-node sample, random split): AUC 0.956, precision 0.918, recall 0.839, F1 0.877. A re-run on 11 Nov 2026 gave AUC 0.955 and F1 0.879: its CPU training is not fully deterministic.", "**Pre-set check (ADR-004):** our illicit F1 must be within ±0.05 of the published 0.788: 0.815, passed.", "Random forest: 50 trees, max_features 50, random_state 42; 29,894 training and 16,670 test transactions."]}, {"id": "more-glossary", "title": "Glossary", "gloss": [["Illicit", "Labelled as linked to illegal activity in the Elliptic dataset (class \"1\")."], ["Precision", "Of flagged transactions, the share truly illicit."], ["Recall", "Of illicit transactions, the share flagged."], ["F1", "The balance of precision and recall; 1 is perfect."], ["AUC", "How well scores rank illicit above licit across all thresholds; 0.5 is random, 1 is perfect."], ["Time step", "One of 49 snapshots of the network, about two weeks apart."], ["Threshold", "The score above which a transaction is flagged for review."], ["GraphSAGE", "A graph neural network that learns from a transaction and its neighbours."]]}], "footer": ["Data: Elliptic dataset (Weber et al. 2019). Every number comes from data/eval_results.json (ADR-004).", "Sabrina Pribadi · last updated 11 Nov 2026 · [technical walkthrough](build.html) · [code and ADRs](https://github.com/sabrinapribadi/graph-fraud-detector)"]};
 </script>
-</body>
-</html>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+const tip = $("#tip");
+function showTip(e, h) { tip.innerHTML = h; tip.hidden = false; const r = tip.getBoundingClientRect(), x = (e.clientX ?? 0) + 14, y = (e.clientY ?? 0) + 14;
+  tip.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + "px"; tip.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + "px"; }
+function hideTip() { tip.hidden = true; }
+function wire(root) {
+  root.querySelectorAll("[data-tip]").forEach(el => {
+    el.setAttribute("tabindex", "0");
+    el.addEventListener("mousemove", e => showTip(e, el.dataset.tip));
+    el.addEventListener("mouseleave", hideTip);
+    el.addEventListener("focus", () => { const r = el.getBoundingClientRect(); showTip({clientX: r.left, clientY: r.bottom}, el.dataset.tip); });
+    el.addEventListener("blur", hideTip);
+  });
+}
+addEventListener("scroll", hideTip, {passive: true});
+const tipText = (title, lines) => `<b>${esc(title)}</b>${lines.map(esc).join("<br>")}`;
+
+function bars(c) {
+  const W = 720, rowH = 26, L = 190, R = 70, H = c.rows.length * rowH + 30, max = c.max ?? Math.max(...c.rows.map(r => r.v)) * 1.08;
+  const x = v => L + (W - L - R) * v / max;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title)}">`;
+  if (c.ref != null) s += `<line class="axis" x1="${x(c.ref)}" x2="${x(c.ref)}" y1="0" y2="${H - 22}" stroke-dasharray="4 3"/><text class="dim" x="${x(c.ref) + 4}" y="${H - 8}">${esc(c.refLabel || "")}</text>`;
+  c.rows.forEach((r, i) => {
+    const y = i * rowH + 4;
+    s += `<text x="${L - 8}" y="${y + 15}" text-anchor="end">${esc(r.label)}</text>`;
+    s += `<rect x="${L}" y="${y + 3}" width="${Math.max(2, x(r.v) - L)}" height="${rowH - 9}" rx="3" fill="var(--${r.color || "c4"})" data-tip="${esc(tipText(r.label, r.tip))}"/>`;
+    s += `<text x="${x(r.v) + 6}" y="${y + 15}" class="dim">${esc(r.text ?? r.v)}</text>`;
+  });
+  return s + "</svg>";
+}
+function dumbbell(c) {
+  const W = 720, rowH = 30, L = 150, R = 30, H = c.rows.length * rowH + 34, max = Math.max(...c.rows.flatMap(r => [r.a, r.b])) * 1.05;
+  const x = v => L + (W - L - R) * v / max;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title)}">`;
+  c.rows.forEach((r, i) => {
+    const y = i * rowH + 16;
+    s += `<text x="${L - 8}" y="${y + 4}" text-anchor="end">${esc(r.label)}</text>`;
+    s += `<line x1="${x(r.a)}" x2="${x(r.b)}" y1="${y}" y2="${y}" stroke="var(--c4)" stroke-width="2"/>`;
+    s += `<circle cx="${x(r.a)}" cy="${y}" r="6" fill="var(--c2)" data-tip="${esc(tipText(r.label, [c.aLabel + ": " + r.a.toFixed(2), ...(r.tip || [])]))}"/>`;
+    s += `<circle cx="${x(r.b)}" cy="${y}" r="6" fill="var(--c1)" data-tip="${esc(tipText(r.label, [c.bLabel + ": " + r.b.toFixed(2), ...(r.tip || [])]))}"/>`;
+  });
+  return s + `</svg><div class="legend"><span><i style="background:var(--c2)"></i>${esc(c.aLabel)}</span><span><i style="background:var(--c1)"></i>${esc(c.bLabel)}</span></div>`;
+}
+function seriesView(c, idx) {
+  const W = 720, H = 260, L = 44, R = 12, T = 12, B = 30, p = c.panels[idx], n = p.truth.length;
+  const all = [p.truth, ...c.series.map(s => p[s.key])].flat(), lo = Math.min(...all) - 0.5, hi = Math.max(...all) + 0.5;
+  const x = i => L + (W - L - R) * i / (n - 1), y = v => T + (H - T - B) * (hi - v) / (hi - lo);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title)}">`;
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4; s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="dim" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${(Math.round(v) || 0).toString().replace("-", "−")}</text>`; }
+  [0, 6, 12, 18, 23].forEach(i => s += `<text class="dim" x="${x(i)}" y="${H - 10}" text-anchor="${i === 0 ? "start" : i === 23 ? "end" : "middle"}">+${i + 1} h</text>`);
+  const path = (arr, col, w, dash) => `<path d="${arr.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1)).join("")}" fill="none" stroke="var(--${col})" stroke-width="${w}" ${dash ? 'stroke-dasharray="5 4"' : ""}/>`;
+  s += path(p.truth, "fg", 2.2, false);
+  c.series.forEach(se => s += path(p[se.key], se.color, 2, true));
+  for (let i = 0; i < n; i++) {
+    const lines = [`Actual: ${p.truth[i].toFixed(1)} ${c.unit}`, ...c.series.map(se => `${se.label}: ${p[se.key][i].toFixed(1)} ${c.unit} (off by ${Math.abs(p[se.key][i] - p.truth[i]).toFixed(1)})`)];
+    s += `<rect x="${x(i) - (W - L - R) / (n - 1) / 2}" y="${T}" width="${(W - L - R) / (n - 1)}" height="${H - T - B}" fill="transparent" data-tip="${esc(tipText(p.label + " · hour +" + (i + 1), lines))}"/>`;
+  }
+  return s + "</svg>";
+}
+function chart(c) {
+  const head = `<div class="chart" id="${c.id}"><h3>${esc(c.title)}</h3>${c.sub ? `<p class="sub">${md(c.sub)}</p>` : ""}`;
+  if (c.kind === "bars") return head + bars(c) + "</div>";
+  if (c.kind === "dumbbell") return head + dumbbell(c) + "</div>";
+  if (c.kind === "steps") return head + `<div class="slider"><label for="${c.id}-s">${esc(c.sliderLabel)}</label><input type="range" id="${c.id}-s" min="0" max="${c.panels.length - 1}" value="${c.start || 0}"><span id="${c.id}-l"></span></div><div id="${c.id}-v"></div><p class="sub" id="${c.id}-m"></p></div>`;
+  if (c.kind === "series") return head + `<div class="slider"><label for="${c.id}-s">${esc(c.sliderLabel)}</label><input type="range" id="${c.id}-s" min="0" max="${c.panels.length - 1}" value="${c.start || 0}"><span id="${c.id}-l"></span></div><div id="${c.id}-v"></div>` +
+    `<div class="legend"><span><i style="background:var(--fg)"></i>Actual</span>${c.series.map(s => `<span><i style="background:var(--${s.color})"></i>${esc(s.label)}</span>`).join("")}</div><p class="sub" id="${c.id}-m"></p></div>`;
+  return "";
+}
+function drawSeries(c) {
+  const inp = $(`#${c.id}-s`), draw = () => { const i = +inp.value, p = c.panels[i];
+    $(`#${c.id}-v`).innerHTML = seriesView(c, i); $(`#${c.id}-l`).textContent = p.label;
+    $(`#${c.id}-m`).innerHTML = c.series.map(s => `${esc(s.label)} misses by ${p[s.key + "_mae"].toFixed(2)} ${c.unit} on average this day`).join(" · ");
+    wire($(`#${c.id}-v`)); };
+  inp.addEventListener("input", draw); draw();
+}
+function drawSteps(c) {
+  const inp = $(`#${c.id}-s`), draw = () => { const p = c.panels[+inp.value];
+    $(`#${c.id}-v`).innerHTML = bars({title: c.title, rows: p.bars, max: c.max}); $(`#${c.id}-l`).textContent = p.label;
+    $(`#${c.id}-m`).innerHTML = md(p.note); wire($(`#${c.id}-v`)); };
+  inp.addEventListener("input", draw); draw();
+}
+const list = a => `<ul class="points">${a.map(t => `<li>${md(t)}</li>`).join("")}</ul>`;
+const table = t => `<div class="scroll"><table><thead><tr>${t.head.map((h, k) => `<th${(t.num || []).includes(k) ? ' class="num"' : ""}>${esc(h)}</th>`).join("")}</tr></thead><tbody>${
+  t.rows.map(r => `<tr>${r.map((v, k) => `<td${(t.num || []).includes(k) ? ' class="num"' : ""}${k === t.chosen ? ' class="chosen"' : ""}>${md(String(v))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+const P = PAGE;
+$("#page").innerHTML = `
+<section class="block" id="problem"><div class="sec-head"><span class="n">1</span><h2>Problem</h2></div>
+  <div class="cols"><div class="box">${list(P.problem.points)}</div>
+  <div class="box"><span class="eyebrow">Today vs this project</span>
+    <div class="flow">${P.problem.today.map(t => `<span>${esc(t)}</span>`).join("<i>→</i>")}</div>
+    <div class="flow">${P.problem.project.map(t => `<span class="now">${esc(t)}</span>`).join("<i>→</i>")}</div>
+    <p class="sub" style="margin:0;font-size:13.5px;color:var(--muted)">${md(P.problem.need)}</p></div></div></section>
+<section class="block" id="data"><div class="sec-head"><span class="n">2</span><h2>Data</h2></div>${table(P.data)}${list(P.dataNotes)}</section>
+<section class="block" id="approach"><div class="sec-head"><span class="n">3</span><h2>Approach and model choice</h2></div>
+  <div class="flow">${P.pipeline.map((t, i) => `<span>${i + 1}. ${esc(t)}</span>`).join("<i>→</i>")}</div>${table(P.choices)}</section>
+<section class="block" id="solution"><div class="sec-head"><span class="n">4</span><h2>Solution</h2></div>
+  <div class="tiles">${P.tiles.map(t => `<div class="tile"><b>${esc(t[0])}</b><span>${md(t[1])}</span></div>`).join("")}</div>
+  ${P.charts.map(chart).join("")}
+  <div class="cols"><div class="box"><span class="eyebrow">Caveats</span>${list(P.caveats)}</div>
+  <div class="box"><span class="eyebrow">FAQ</span><div class="faq">${P.faq.map(q => `<details><summary>${esc(q[0])}</summary><div class="body">${md(q[1])}</div></details>`).join("")}</div></div></div></section>
+<section class="block" id="take"><div class="sec-head"><span class="n">5</span><h2>Our take</h2></div>
+  <div class="cols"><div class="box">${list(P.take)}</div><div class="box"><span class="eyebrow">What would change our mind</span>${list(P.changeMind)}</div></div></section>
+<section class="block">${P.more.map(m => `<details class="more" id="${m.id}"><summary>${esc(m.title)}</summary><div class="body">${
+  (m.charts || []).map(chart).join("")}${m.table ? table(m.table) : ""}${m.points ? list(m.points) : ""}${
+  m.gloss ? `<dl class="gloss">${m.gloss.map(g => `<dt>${esc(g[0])}</dt><dd>${md(g[1])}</dd>`).join("")}</dl>` : ""}</div></details>`).join("")}</section>`;
+$("#foot").innerHTML = P.footer.map(f => `<span>${md(f)}</span>`).join("");
+wire(document);
+[...P.charts, ...P.more.flatMap(m => m.charts || [])].filter(c => c.kind === "series").forEach(drawSeries);
+[...P.charts, ...P.more.flatMap(m => m.charts || [])].filter(c => c.kind === "steps").forEach(drawSteps);
+document.querySelectorAll("a[href^='#']").forEach(a => a.addEventListener("click", () => { const d = document.getElementById(a.getAttribute("href").slice(1)); if (d && d.tagName === "DETAILS") d.open = true; }));
+</script>

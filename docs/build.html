@@ -1,0 +1,498 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fraud Screening Build Walkthrough</title>
+<!-- share preview (portfolio rule R18) -->
+<meta name="description" content="How the Bitcoin fraud screener was built, phase by phase: the bar set beforehand, the result, obstacles and fixes.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sabrinapribadi.github.io/graph-fraud-detector/build.html">
+<meta property="og:title" content="Fraud Screening Build Walkthrough">
+<meta property="og:description" content="How the Bitcoin fraud screener was built, phase by phase: the bar set beforehand, the result, obstacles and fixes.">
+<meta property="og:image" content="https://sabrinapribadi.github.io/graph-fraud-detector/assets/preview-build.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta property="og:image:alt" content="Top of the Fraud Screening Build Walkthrough page">
+<meta name="twitter:card" content="summary_large_image">
+<!-- /share preview -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Technical walkthrough (portfolio rule R14). Generated from the shared walkthrough template. */
+:root {
+  --bg: #f4f2ed; --surface: #fffdf9; --fg: #1f1d1a; --muted: #625d55; --line: #e0dbd1; --tint: #ece8df;
+  --accent: #a3322b; --accent-soft: #f6dedb;
+  --ok: #2c7a4b; --ok-soft: #dcefe3; --bad: #b23a2a; --bad-soft: #f6e0dc; --run: #35648f; --run-soft: #dfe9f3;
+  --lane-a: #f1eee7; --lane-b: #f8f6f1;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15130f; --surface: #1d1a15; --fg: #ece6db; --muted: #a49c8f; --line: #353026; --tint: #24201a;
+  --accent: #f08a80; --accent-soft: #3a1d1b;
+  --ok: #5fc48a; --ok-soft: #173326; --bad: #f08068; --bad-soft: #42221c; --run: #7fb0e0; --run-soft: #1b2a3a;
+  --lane-a: #1a1712; --lane-b: #17140f;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15130f; --surface: #1d1a15; --fg: #ece6db; --muted: #a49c8f; --line: #353026; --tint: #24201a;
+  --accent: #f08a80; --accent-soft: #3a1d1b;
+  --ok: #5fc48a; --ok-soft: #173326; --bad: #f08068; --bad-soft: #42221c; --run: #7fb0e0; --run-soft: #1b2a3a;
+  --lane-a: #1a1712; --lane-b: #17140f;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 var(--font-body); }
+.wrap { max-width: 1160px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font: 700 clamp(28px, 4vw, 42px)/1.15 var(--font-head); letter-spacing: -0.01em; }
+h2 { font: 700 24px/1.2 var(--font-head); }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font: 600 12px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+header.top { display: grid; gap: 14px; padding-block: 8px 24px; border-bottom: 1px solid var(--line); }
+header.top .lede { font-size: 17px; max-width: 66ch; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 18px; font: 500 13px var(--font-mono); }
+.links a { text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+
+section.block { display: grid; gap: 18px; padding-block: 34px 6px; }
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.howto div { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; display: grid; gap: 2px; }
+.howto b { font-size: 14px; }
+.howto span { font-size: 13px; color: var(--muted); }
+
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 11.5px var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--tint); }
+tr:last-child td { border-bottom: 0; }
+
+.map { min-width: 980px; }
+.map th.ph { cursor: pointer; white-space: nowrap; }
+.map th.ph:hover, .map th.ph.on { color: var(--accent); }
+.map th.ph.on { background: var(--accent-soft); }
+.map td.lane { font: 600 12px var(--font-mono); color: var(--muted); white-space: nowrap; background: var(--tint); }
+.map td.cell { font-size: 12.5px; line-height: 1.4; cursor: pointer; }
+.map td.cell.on { background: var(--accent-soft); }
+.map td.cell span { display: block; }
+.map td.cell span + span { margin-top: 4px; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 11px/1 var(--font-mono); letter-spacing: 0.03em; padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+.chip.pass { background: var(--ok-soft); color: var(--ok); }
+.chip.fail { background: var(--bad-soft); color: var(--bad); }
+.chip.run { background: var(--run-soft); color: var(--run); }
+.chip.plan { background: var(--tint); color: var(--muted); }
+
+.picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker button { font: 600 13px var(--font-mono); border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 8px 12px; cursor: pointer; display: grid; gap: 4px; justify-items: start; }
+.picker button small { font: 500 11px var(--font-body); color: var(--muted); }
+.picker button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 600px) {
+  .picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .picker button { padding: 7px 9px; min-width: 0; }
+  .picker button small { display: none; }
+  .picker .chip { white-space: normal; line-height: 1.25; }
+}
+
+.phase-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+.phase-head .dates { font: 500 12px var(--font-mono); color: var(--muted); }
+.scqa { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.scqa div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.scqa b { font: 600 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.scqa p { font-size: 13.5px; line-height: 1.5; }
+@media (max-width: 860px) { .scqa { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .scqa { grid-template-columns: minmax(0, 1fr); } }
+
+.lanewrap { display: grid; gap: 12px; }
+.walk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.walk button { font: 600 13px var(--font-body); border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.walk button.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.walk button:disabled { opacity: 0.45; cursor: default; }
+.walk .pos { font: 600 12px var(--font-mono); color: var(--muted); }
+svg.swim { display: block; }
+svg.swim .lane-bg { fill: var(--lane-a); }
+svg.swim .lane-bg.alt { fill: var(--lane-b); }
+svg.swim .lane-label { fill: var(--muted); font: 600 11px var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
+svg.swim .lane-line { stroke: var(--line); }
+svg.swim .edge { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg.swim .arrowhead { fill: var(--muted); }
+svg.swim g.step { cursor: pointer; outline: none; }
+svg.swim g.step rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+svg.swim g.step text { fill: var(--fg); font: 500 11.5px var(--font-body); }
+svg.swim g.step .num { fill: var(--accent); font: 700 11px var(--font-mono); }
+svg.swim g.step.kind-fail rect { stroke: var(--bad); }
+svg.swim g.step.kind-fix rect { stroke: var(--ok); }
+svg.swim g.step.kind-plan rect { stroke-dasharray: 4 3; }
+svg.swim g.step:hover rect, svg.swim g.step:focus rect { stroke: var(--accent); stroke-width: 2; }
+svg.swim g.step.current rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.4; }
+svg.swim g.step.done rect { fill: var(--tint); }
+.lane-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); }
+.lane-legend i { display: inline-block; width: 18px; height: 11px; border-radius: 3px; border: 1.5px solid var(--line); vertical-align: -1px; margin-right: 6px; background: var(--surface); }
+.lane-legend i.fail { border-color: var(--bad); }
+.lane-legend i.fix { border-color: var(--ok); }
+.lane-legend i.plan { border-style: dashed; }
+
+.detail { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+.detail .kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 12px; font-size: 13.5px; }
+.detail .kv b { font: 600 11px var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.detail code, td code { font: 12px var(--font-mono); background: var(--tint); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+
+#phase { display: grid; gap: 30px; padding-top: 10px; }
+#phase > .part + .part { border-top: 1px solid var(--line); padding-top: 26px; }
+.ph-top { display: grid; gap: 14px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.box { display: grid; gap: 12px; min-width: 0; align-content: start; }
+.box > .eyebrow ~ .eyebrow { margin-top: 16px; }
+ul.points { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.star { margin: 0; border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; font: italic 600 16px/1.5 var(--font-head); }
+.obst td:first-child { width: 22%; }
+@media (max-width: 600px) {
+  .obst thead { display: none; }
+  .obst, .obst tbody, .obst tr, .obst td { display: block; width: 100%; }
+  .obst tr { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .obst tr:last-child { border-bottom: 0; }
+  .obst td, .obst td:first-child { width: auto; border: 0; padding: 3px 0; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; }
+  .obst td::before { content: attr(data-label); font: 600 10.5px var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .obst td:first-child { font-weight: 600; }
+}
+.verdict-ok { color: var(--ok); font-weight: 600; }
+.verdict-no { color: var(--bad); font-weight: 600; }
+.verdict-wait { color: var(--run); font-weight: 600; }
+.tip { position: fixed; z-index: 10; max-width: 300px; background: var(--fg); color: var(--bg); font-size: 12.5px; line-height: 1.45; padding: 8px 10px; border-radius: 8px; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+.tip b { display: block; margin-bottom: 2px; }
+footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+/* brief:css:start (rule R22, written by scripts/brief.py) */
+.brief { display: grid; gap: 12px; padding-block: 18px 4px; text-align: left; }
+.brief a { color: var(--accent); }
+.brief-list { list-style: none; margin: 0; padding: 0 !important; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+.brief-list li { display: grid; align-content: start; gap: 4px; padding: 12px 14px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line, var(--border)); border-radius: 8px; }
+.brief-w { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.brief-main { font-size: 14.5px; line-height: 1.45; color: var(--fg, var(--text)); }
+.brief-sub { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.brief-skills summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.brief-skills ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.45; }
+.brief-proof { font-size: 12px; margin-left: 4px; white-space: nowrap; }
+/* brief:css:end */
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Technical walkthrough · Bitcoin fraud screening</span>
+  <h1>How the fraud screener was built, phase by phase</h1>
+<!-- brief:start -->
+<section class="brief" id="brief" aria-label="Project at a glance"><span class="eyebrow">At a glance</span><ol class="brief-list"><li><span class="brief-w">1 · What</span><span class="brief-main">A Bitcoin fraud detector: graph and tabular models score transactions, with a dashboard, an AI assistant and risk analytics.</span></li><li><span class="brief-w">2 · Why</span><span class="brief-main">Illicit payments hide in a 200,000-transaction graph; investigators need a ranked, explained shortlist instead of raw flows.</span></li><li><span class="brief-w">3 · Who</span><span class="brief-main">Users: anti-money-laundering analysts and investigators.</span></li><li><span class="brief-w">4 · Where</span><span class="brief-main"><a href="https://sabrinapribadi.github.io/graph-fraud-detector/">Results page</a>, <a href="https://sabrinapribadi.github.io/graph-fraud-detector/build.html">technical walkthrough</a> and <a href="https://sabrinapribadi.github.io/graph-fraud-detector/demo.html">transaction demo</a> on GitHub Pages; <a href="https://graph-fraud-detector.streamlit.app">dashboard</a> on Streamlit Community Cloud; the API runs locally.</span></li><li><span class="brief-w">5 · When it fails</span><span class="brief-main">Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way.</span></li><li><span class="brief-w">6 · How</span><span class="brief-main">Random forest on 166 features with the dataset authors&#x27; time split; GraphSAGE and GAT on the graph; a bandit picks the alert threshold.</span></li></ol><details class="brief-skills"><summary>Skills applied, with proof</summary><ul><li><b>Graph machine learning</b> GraphSAGE and GAT on the transaction graph <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/gnn_model.py">gnn_model.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/advanced_gnn.py">advanced_gnn.py</a></li><li><b>Machine learning and evaluation</b> random forest, time-based split, per-step F1, replication of the published benchmark <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-004-label-fix-and-evaluation.md">ADR-004</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/scripts/evaluate_models.py">evaluate_models.py</a></li><li><b>Reinforcement learning</b> LinUCB contextual bandit for the alert threshold <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-001-rl-threshold-bandit.md">ADR-001</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/rl/bandit.py">bandit.py</a></li><li><b>Quantitative risk</b> Monte Carlo loss, value at risk, stress tests, Basel III capital <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/risk_analysis.py">risk_analysis.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/regulatory_capital.py">regulatory_capital.py</a></li><li><b>GenAI and agents</b> LangChain agent with 9 tools, retrieval over a fraud knowledge base <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/fraud_agent.py">fraud_agent.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/rag_agent.py">rag_agent.py</a></li><li><b>Data engineering and services</b> FastAPI service, medallion layers (document store and Postgres) <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-002-mongodb-alert-layer.md">ADR-002</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-003-postgresql-gold-layer.md">ADR-003</a></li><li><b>CI/CD</b> GitHub Actions lint and tests on every push; static demo on Pages <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/.github/workflows/ci.yml">ci.yml</a></li></ul></details></section>
+<!-- brief:end -->
+
+  <div class="links">
+    <a href="./">← Results page</a>
+    <a href="https://github.com/sabrinapribadi/graph-fraud-detector">Code and ADRs</a>
+    <a href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/CHANGELOG.md">Change log (STAR)</a>
+  </div>
+</header>
+
+<section class="block" aria-labelledby="h-read">
+  <span class="eyebrow" id="h-read">How to read each phase</span>
+  <div class="howto">
+    <div><b>SCQA</b><span>Situation · Complication · Question · Answer (the gate result)</span></div>
+    <div><b>Swimlane</b><span>Build steps by layer; step through with Next</span></div>
+    <div><b>Decisions</b><span>What was chosen, with the ADR that records why</span></div>
+    <div><b>Obstacles</b><span>Symptom → root cause → fix → prevention</span></div>
+    <div><b>Result vs gate</b><span>Pass or fail against the bar set in advance</span></div>
+    <div><b>Lessons + STAR</b><span>What carries over, and the one-line interview story</span></div>
+  </div>
+</section>
+
+<section class="block" aria-labelledby="h-map">
+  <div class="phase-head"><h2 id="h-map">System map</h2><span class="muted">What each phase adds to each layer. Click a phase to open it.</span></div>
+  <div class="scroll"><table class="map" id="map"></table></div>
+</section>
+
+<section class="block" aria-labelledby="h-phase">
+  <span class="eyebrow" id="h-phase">Phase</span>
+  <div class="picker" id="picker" role="tablist" aria-label="Phases"></div>
+  <article id="phase"></article>
+</section>
+
+<footer>
+  <span>Every number comes from <code>data/eval_results.json</code>, the ADRs, <code>docs/lessons-learned.md</code> and <code>CHANGELOG.md</code>. Data: Elliptic dataset (Weber et al. 2019).</span>
+  <span>Sabrina Pribadi · last updated <span id="updated"></span> · <a href="./">results page</a> · <a href="https://github.com/sabrinapribadi/graph-fraud-detector">github.com/sabrinapribadi/graph-fraud-detector</a></span>
+</footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+<script>
+const P = {updated: '11 Nov 2026'};
+const REPO = "https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/";
+const ADR = {"001": "docs/adr/ADR-001-rl-threshold-bandit.md", "002": "docs/adr/ADR-002-mongodb-alert-layer.md",
+  "003": "docs/adr/ADR-003-postgresql-gold-layer.md", "004": "docs/adr/ADR-004-label-fix-and-evaluation.md"};
+const LANES = ["Data (Elliptic)", "Model", "Evaluation", "AI & analytics", "Services & storage", "Hosting & CI", "Decision"];
+
+const PHASES = [
+{
+  id: "p1", tag: "P1", name: "Data, models and API", dates: "25 Jun 2026", verdict: ["fail", "labels inverted (found in P5)"],
+  scqa: ["The Elliptic dataset links 203,769 Bitcoin transactions with 166 anonymised features.",
+         "Only 23% are labelled, and illicit payments are 2% of all transactions.",
+         "Can graph models and a service score transactions end to end?",
+         "Built, but the loader swapped illicit and licit, so every figure described licit payments as fraud."],
+  steps: [
+    ["Data (Elliptic)", "Compact data", "CSV files to compressed Parquet: 690 MB to 87 MB.", "Fits a free host; no large-file storage.", "data/processed/"],
+    ["Data (Elliptic)", "Label mapping", "Class \"1\" mapped to licit and \"2\" to illicit: the opposite of the dataset.", "Not checked against the paper's counts.", "src/data/loader.py", "fail"],
+    ["Model", "Graph networks", "GCN, GraphSAGE and GAT on the transaction graph.", "Learn from neighbours, not just features.", "src/models/gnn_model.py"],
+    ["Services & storage", "REST API", "FastAPI service with 11 endpoints and docs.", "Other systems can call the scorer.", "src/api/app.py"],
+    ["Hosting & CI", "Containers", "Dockerfiles for the dashboard and the API.", "Same build everywhere.", "Dockerfile"]
+  ],
+  decisions: [],
+  results: [["Label counts vs the paper", "4,545 illicit", "swapped (42,019 shown as illicit)", "no"]],
+  obstacles: [["Fraud figures looked plausible", "A swapped label still trains a confident model", "Fixed in P5 with a test pinned to the published counts", "Check class counts against the dataset paper before any modelling"]],
+  lessons: ["A model can look excellent while predicting the wrong class."],
+  star: "I built the data, models and API in a day; the label inversion I missed then is the reason P5 exists."
+},
+{
+  id: "p2", tag: "P2", name: "Risk analytics and AI", dates: "26 Jun – 1 Jul 2026", verdict: ["pass", "built"],
+  scqa: ["Finance users ask about losses and capital, not AUC.",
+         "Model scores alone do not answer 'how much could we lose?'.",
+         "Can the dashboard translate scores into risk and plain-language answers?",
+         "Built: Monte Carlo losses, stress tests, Basel III capital, a 9-tool agent and a knowledge base."],
+  steps: [
+    ["AI & analytics", "Risk analytics", "Monte Carlo loss, value at risk, stress scenarios, loss forecasting.", "Answers in money terms.", "src/analytics/risk_analysis.py"],
+    ["AI & analytics", "Regulatory capital", "Basel III standardised vs IRB capital at 99.9%.", "What reserve the risk implies.", "src/analytics/regulatory_capital.py"],
+    ["AI & analytics", "AI assistant", "LangChain agent with 9 tools and conversation history.", "Questions in plain English.", "src/agent/fraud_agent.py"],
+    ["AI & analytics", "Knowledge base", "Retrieval over 25 fraud documents with a keyword fallback.", "Grounded definitions.", "src/agent/rag_agent.py"],
+    ["Evaluation", "Unit tests", "Tests for the agent tools and analytics.", "Changes cannot silently break tools.", "tests/"]
+  ],
+  decisions: [],
+  results: [["Dashboard tabs", "—", "14 tabs", ""]],
+  obstacles: [["Radar chart misleading across sprints", "Metrics on different scales were normalised inconsistently", "Natural axes, then honest normalisation", "Show raw values with every normalised chart"]],
+  lessons: ["Translate model output into the reader's units."],
+  star: "I turned fraud scores into answers a finance user asks: expected loss, stress losses and capital."
+},
+{
+  id: "p3", tag: "P3", name: "Threshold bandit and data layers", dates: "10 Jul 2026", verdict: ["run", "built, not benchmarked"],
+  scqa: ["The best alert threshold changes as fraud rates change.",
+         "A fixed threshold over- or under-alerts in shifting periods.",
+         "Can a contextual bandit pick the threshold per period, and can alerts persist for analysts?",
+         "Built: a LinUCB bandit in the dashboard and bronze (alerts) and gold (Postgres) layers. No stored benchmark yet."],
+  steps: [
+    ["Model", "Threshold bandit", "LinUCB picks among 5 thresholds per time step; missed fraud costs 10× a false alarm.", "Adapts to the period.", "src/rl/bandit.py"],
+    ["Services & storage", "Alert layer", "Alerts stored as documents (bronze layer).", "An audit trail of alerts.", "docs/adr/ADR-002-mongodb-alert-layer.md"],
+    ["Services & storage", "Gold layer", "Aggregates in Postgres for reporting.", "Fast queries for dashboards.", "docs/adr/ADR-003-postgresql-gold-layer.md"],
+    ["Evaluation", "No stored benchmark", "The bandit retrains live in the dashboard; no result file compares it with a fixed threshold.", "A gap, stated.", "planned", "plan"]
+  ],
+  decisions: [["LinUCB for the alert threshold", "001"], ["Document store for alerts", "002"], ["Postgres gold layer", "003"]],
+  results: [["Bandit vs fixed threshold", "measured", "not measured yet", "wait"]],
+  obstacles: [["Database ports blocked on the build network", "Network policy blocked direct database connections", "Used the providers' web consoles over HTTPS", "Check network access before choosing a hosted database"],
+              ["Postgres pooler rejected transactions", "Transaction-mode pooling needs autocommit", "Set autocommit on every connection", "Read the pooler's mode before writing"]],
+  lessons: ["A learned policy needs the same benchmark as a fixed one."],
+  star: "I added an adaptive alert threshold and a two-layer store; I say plainly that the bandit is not yet benchmarked."
+},
+{
+  id: "p4", tag: "P4", name: "Hosting", dates: "10–12 Jul 2026", verdict: ["fail", "paid host failed; moved to free"],
+  scqa: ["The dashboard and API ran on a paid app host.",
+         "The dashboard needed about 868 MB at first load; the plan had 512 MB.",
+         "Can it run reliably without paying more?",
+         "Yes: Streamlit Community Cloud for the dashboard and a static GitHub Pages demo; the paid services were retired."],
+  steps: [
+    ["Hosting & CI", "Crash loop", "Out of memory during the first page load, every restart.", "Startup peak above the plan's limit.", "docs/lessons-learned.md", "fail"],
+    ["Data (Elliptic)", "Smaller loads", "Float32 data and a manual z-score: 272 MB less at peak.", "Not enough on its own.", "src/data/loader.py", "fix"],
+    ["Hosting & CI", "Free hosting", "Dashboard on Streamlit Community Cloud; static demo on GitHub Pages.", "$0 and enough memory.", "README.md", "fix"],
+    ["Hosting & CI", "Pinned builds", "Pinned requirements and Python 3.12.", "Reproducible deploys.", "requirements.txt"]
+  ],
+  decisions: [],
+  results: [["Dashboard memory", "≤ 512 MB", "about 868 MB at first load", "no"], ["Monthly hosting cost", "$0", "$0 after the move", "ok"]],
+  obstacles: [["502 on every first visit", "The cache could not persist before the crash", "Moved to a host with more memory", "Profile startup memory before choosing a plan"],
+              ["Plan upgrade did not apply", "The host's dashboard accepted it silently", "Abandoned the paid path", "Verify plan changes with the provider's API"]],
+  lessons: ["Steady-state memory near the limit leaves no room for startup."],
+  star: "When the paid host crashed in a loop, I profiled memory, cut 272 MB, and moved to free hosting that fits."
+},
+{
+  id: "p5", tag: "P5", name: "Label fix and measured evaluation", dates: "11 Nov 2026", verdict: ["pass", "passed"],
+  scqa: ["An audit found the loader swapped illicit and licit.",
+         "Every model, risk figure and the reported AUC described licit payments as fraud.",
+         "After the fix, does the pipeline reproduce the published benchmark on the authors' time split?",
+         "Yes: illicit F1 0.815 vs 0.788 published (bar: within ±0.05)."],
+  steps: [
+    ["Decision", "Pre-registered", "Protocol and bar pushed before any retraining.", "Results cannot move the goalposts.", "docs/adr/ADR-004-label-fix-and-evaluation.md"],
+    ["Data (Elliptic)", "Labels fixed and tested", "Class \"1\" = illicit; a test pins 4,545 / 42,019 / 157,205.", "The bug cannot return.", "tests/test_labels.py", "fix"],
+    ["Evaluation", "Paper's protocol", "Train on steps 1–34, test on 35–49; random forest, all 166 features.", "Comparable with the published result.", "scripts/evaluate_models.py"],
+    ["Evaluation", "Behaviour shift", "F1 per time step: 0.90 before the market closure, 0.03 after.", "Shows when the model stops working.", "data/eval_results.json"],
+    ["Evaluation", "Threshold curve", "Catch vs false alarms at thresholds 0.05 to 0.95.", "Feeds the what-if.", "data/eval_results.json"],
+    ["Hosting & CI", "Measured numbers only", "README, knowledge base and demo read one result file.", "No typed numbers.", "src/utils/measured.py"]
+  ],
+  decisions: [["Fix labels; check against the paper's time split", "004"]],
+  results: [["Illicit F1 vs published 0.788", "within ±0.05", "0.815", "ok"], ["Label counts", "4,545 / 42,019", "match (tested)", "ok"]],
+  obstacles: [["Old demo button sent 166 zeros", "Placeholder input never replaced", "Static demo shows real held-out transactions", "Test demos with real inputs"]],
+  lessons: ["Reproduce a published number before trusting your own.", "Report the step where the model stops working."],
+  star: "I found my fraud detector had labels inverted, fixed it, and proved the fix by reproducing the published benchmark (0.815 vs 0.788)."
+},
+{
+  id: "p6", tag: "P6", name: "Pages and CI", dates: "11 Nov 2026", verdict: ["pass", "passed"],
+  scqa: ["Readers skim; reviewers audit.", "The old page was a demo without the problem, data or decisions.",
+         "Can both find the answer fast, every number explained?", "Yes: a brief first, a results page with a threshold what-if, this walkthrough, and browser tests in CI."],
+  steps: [
+    ["Hosting & CI", "Brief", "What, why, who, where, when it fails and how, from one source file.", "Rule R22.", "docs/brief.yaml"],
+    ["Hosting & CI", "Results page", "Problem, data, approach, a threshold what-if and quality by time step.", "Readable in about two minutes.", "docs/index.html"],
+    ["Hosting & CI", "Walkthrough", "This page: every phase, pass or fail.", "For technical review.", "docs/build.html"],
+    ["Hosting & CI", "CI", "Lint, tests, brief check and browser tests; Pages deploy only after they pass.", "Rule R19.", ".github/workflows/ci.yml"]
+  ],
+  decisions: [], results: [["Browser checks", "all pass", "all pass", "ok"]], obstacles: [],
+  lessons: ["Put the failure step on the page, not just the headline score."],
+  star: "The page lets an analyst choose a threshold and see the catch, the misses and the false alarms."
+}];
+
+const MAP = {
+  "Data (Elliptic)": {p1: ["Parquet, 87 MB", "Labels swapped"], p4: ["Float32 loads"], p5: ["Labels fixed + test"]},
+  "Model": {p1: ["GCN, GraphSAGE, GAT"], p3: ["Threshold bandit"]},
+  "Evaluation": {p2: ["Unit tests"], p3: ["Not benchmarked"], p5: ["Paper's time split", "Per-step F1", "Threshold curve"]},
+  "AI & analytics": {p2: ["Risk, stress, capital", "9-tool agent", "Knowledge base"]},
+  "Services & storage": {p1: ["FastAPI"], p3: ["Alert layer", "Gold layer"]},
+  "Hosting & CI": {p1: ["Docker"], p4: ["Crash loop", "Free hosting"], p5: ["Numbers from one file"], p6: ["Pages + CI"]},
+  "Decision": {p5: ["Pre-registered"]}
+};
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const tip = $("#tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect(), x = (e.clientX ?? e.x) + 14, y = (e.clientY ?? e.y) + 14;
+  tip.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + "px";
+  tip.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + "px";
+}
+function hideTip() { tip.hidden = true; }
+const chip = v => `<span class="chip ${v[0]}">${esc(v[1])}</span>`;
+const adrLink = n => `<a href="${REPO}${ADR[n]}">ADR-${n}</a>`;
+const fileLink = f => f === "planned" ? '<span class="muted">planned</span>'
+  : f.split(" · ").map(x => /^(ADR|CHANGELOG)/.test(x) ? esc(x) : `<code>${esc(x)}</code>`).join(" · ");
+
+function renderMap() {
+  const head = `<thead><tr><th>Layer</th>${PHASES.map(p => `<th class="ph" data-id="${p.id}" tabindex="0" title="Open ${p.tag}">${p.tag}<br><span class="muted" style="text-transform:none;font-weight:500">${esc(p.name.split(" ")[0])}…</span></th>`).join("")}</tr></thead>`;
+  const rows = Object.keys(MAP).map(lane => `<tr><td class="lane">${esc(lane)}</td>${PHASES.map(p =>
+    `<td class="cell" data-id="${p.id}">${(MAP[lane][p.id] || []).map(t => `<span>${esc(t)}</span>`).join("") || '<span class="muted">·</span>'}</td>`).join("")}</tr>`).join("");
+  $("#map").innerHTML = head + "<tbody>" + rows + "</tbody>";
+  $("#map").querySelectorAll("th.ph, td.cell").forEach(el => {
+    const p = PHASES.find(x => x.id === el.dataset.id);
+    el.addEventListener("click", () => select(p.id, true));
+    el.addEventListener("keydown", e => { if (e.key === "Enter") select(p.id, true); });
+    el.addEventListener("mousemove", e => showTip(e, `<b>${esc(p.tag)} · ${esc(p.name)}</b>${esc(p.verdict[1])}. Click to open.`));
+    el.addEventListener("mouseleave", hideTip);
+  });
+}
+function renderPicker() {
+  $("#picker").innerHTML = PHASES.map(p => `<button role="tab" data-id="${p.id}" aria-selected="false">${p.tag} ${chip(p.verdict)}<small>${esc(p.name)}</small></button>`).join("");
+  $("#picker").querySelectorAll("button").forEach(b => b.addEventListener("click", () => select(b.dataset.id, false)));
+}
+const COL = 150, BOX_W = 132, BOX_H = 62, LANE_H = 86, LABEL_W = 132, PAD = 14;
+function wrap(text, max) {
+  const words = text.split(" "), lines = []; let cur = "";
+  for (const w of words) { if ((cur + " " + w).trim().length > max && cur) { lines.push(cur); cur = w; } else cur = (cur + " " + w).trim(); }
+  if (cur) lines.push(cur); return lines.slice(0, 3);
+}
+function renderSwim(p, state) {
+  const lanes = LANES.filter(l => p.steps.some(s => s[0] === l));
+  const W = LABEL_W + p.steps.length * COL + PAD, H = lanes.length * LANE_H;
+  const pos = p.steps.map((s, i) => ({x: LABEL_W + i * COL + (COL - BOX_W) / 2, y: lanes.indexOf(s[0]) * LANE_H + (LANE_H - BOX_H) / 2}));
+  let svg = `<svg class="swim" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.tag)} build steps by layer">
+    <defs><marker id="ah-${p.id}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>`;
+  lanes.forEach((l, i) => {
+    svg += `<rect class="lane-bg${i % 2 ? " alt" : ""}" x="0" y="${i * LANE_H}" width="${W}" height="${LANE_H}"/>`;
+    svg += `<line class="lane-line" x1="0" x2="${W}" y1="${(i + 1) * LANE_H}" y2="${(i + 1) * LANE_H}"/>`;
+    wrap(l, 14).forEach((t, k, arr) => svg += `<text class="lane-label" x="12" y="${i * LANE_H + LANE_H / 2 + (k - (arr.length - 1) / 2) * 14 + 4}">${esc(t)}</text>`);
+  });
+  for (let i = 0; i < pos.length - 1; i++) {
+    const a = pos[i], b = pos[i + 1], x1 = a.x + BOX_W, y1 = a.y + BOX_H / 2, x2 = b.x - 2, y2 = b.y + BOX_H / 2, mx = (x1 + x2) / 2;
+    svg += `<path class="edge" marker-end="url(#ah-${p.id})" d="M${x1},${y1} H${mx} V${y2} H${x2}"/>`;
+  }
+  p.steps.forEach((s, i) => {
+    const {x, y} = pos[i], kind = s[5] ? ` kind-${s[5]}` : "", cls = i === state.i ? " current" : i < state.i ? " done" : "";
+    svg += `<g class="step${kind}${cls}" data-i="${i}" tabindex="0" role="button" aria-label="Step ${i + 1}: ${esc(s[1])}">
+      <rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="8"/>
+      <text class="num" x="${x + 9}" y="${y + 16}">${i + 1}</text>
+      ${wrap(s[1], 16).map((t, k) => `<text x="${x + 24}" y="${y + 17 + k * 15}">${esc(t)}</text>`).join("")}</g>`;
+  });
+  return svg + "</svg>";
+}
+function stepDetail(p, i) {
+  const s = p.steps[i], kind = {fail: "Where it failed", fix: "A fix", plan: "Planned"}[s[5]] || "";
+  return `<div class="detail" aria-live="polite"><span class="eyebrow">Step ${i + 1} of ${p.steps.length} · ${esc(s[0])}${kind ? " · " + kind : ""}</span>
+    <h3>${esc(s[1])}</h3><div class="kv"><b>What</b><span>${esc(s[2])}</span><b>Why</b><span>${esc(s[3])}</span><b>Where</b><span>${fileLink(s[4])}</span></div></div>`;
+}
+const state = {id: PHASES[0].id, i: 0};
+function renderPhase() {
+  const p = PHASES.find(x => x.id === state.id);
+  const scqa = ["Situation", "Complication", "Question", "Answer"].map((h, k) => `<div><b>${h}</b><p>${esc(p.scqa[k])}</p></div>`).join("");
+  const res = p.results.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="mono">${esc(r[2])}</td><td>${
+    r[3] === "ok" ? '<span class="verdict-ok">pass</span>' : r[3] === "no" ? '<span class="verdict-no">fail</span>' : r[3] === "wait" ? '<span class="verdict-wait">pending</span>' : '<span class="muted">info</span>'}</td></tr>`).join("");
+  const obs = p.obstacles.length ? `<div class="part box"><span class="eyebrow">Obstacles · symptom → root cause → fix → prevention</span>
+    <div class="scroll"><table class="obst"><thead><tr><th>Symptom</th><th>Root cause</th><th>Fix</th><th>Prevention</th></tr></thead><tbody>${
+    p.obstacles.map(o => `<tr>${o.map((c, k) => `<td data-label="${["Symptom", "Root cause", "Fix", "Prevention"][k]}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>` : "";
+  $("#phase").innerHTML = `
+    <div class="part ph-top"><div class="phase-head"><h2>${esc(p.tag)} · ${esc(p.name)}</h2>${chip(p.verdict)}<span class="dates">${esc(p.dates)}</span></div>
+    <div class="scqa">${scqa}</div></div>
+    <div class="part lanewrap">
+      <div class="walk"><span class="eyebrow">Build steps</span>
+        <button type="button" id="prev">◀ Prev</button><button type="button" class="primary" id="next">Next ▶</button>
+        <span class="pos" id="pos"></span></div>
+      <div class="scroll" id="swim"></div>
+      <div class="lane-legend"><span><i></i>step</span><span><i class="fail"></i>where it failed</span><span><i class="fix"></i>a fix</span><span><i class="plan"></i>planned</span><span>Hover a step for a summary; click or use Next for details.</span></div>
+      <div id="detail"></div>
+    </div>
+    <div class="part two">
+      <div class="box"><span class="eyebrow">Result vs gate (set before the work)</span>
+        <div class="scroll"><table><thead><tr><th>Check</th><th>Target</th><th>Result</th><th></th></tr></thead><tbody>${res}</tbody></table></div></div>
+      <div class="box"><span class="eyebrow">Key decisions</span>${p.decisions.length ? `<ul class="points">${p.decisions.map(d => `<li>${esc(d[0])} · ${adrLink(d[1])}</li>`).join("")}</ul>` : '<p class="muted">Decided in the phase\'s ADR, before the work.</p>'}
+        ${p.lessons.length ? `<span class="eyebrow">Lessons learned</span><ul class="points">${p.lessons.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}</div>
+    </div>
+    ${obs}
+    ${p.star ? `<div class="part box"><span class="eyebrow">STAR talking point</span><p class="star">“${esc(p.star)}”</p></div>` : ""}`;
+  $("#prev").addEventListener("click", () => step(-1));
+  $("#next").addEventListener("click", () => step(1));
+  drawSteps();
+}
+function drawSteps() {
+  const p = PHASES.find(x => x.id === state.id);
+  $("#swim").innerHTML = renderSwim(p, state);
+  $("#detail").innerHTML = stepDetail(p, state.i);
+  $("#pos").textContent = `Step ${state.i + 1} of ${p.steps.length}`;
+  $("#prev").disabled = state.i === 0; $("#next").disabled = state.i === p.steps.length - 1;
+  $("#swim").querySelectorAll("g.step").forEach(g => {
+    const s = p.steps[+g.dataset.i];
+    const go = () => { state.i = +g.dataset.i; drawSteps(); $(`#swim g.step[data-i="${state.i}"]`).focus({preventScroll: true}); };
+    g.addEventListener("click", go);
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    g.addEventListener("mousemove", e => showTip(e, `<b>${+g.dataset.i + 1}. ${esc(s[1])}</b>${esc(s[2])}`));
+    g.addEventListener("mouseleave", hideTip);
+    g.addEventListener("focus", () => { const r = g.getBoundingClientRect(); showTip({clientX: r.left, clientY: r.bottom}, `<b>${+g.dataset.i + 1}. ${esc(s[1])}</b>${esc(s[2])}`); });
+    g.addEventListener("blur", hideTip);
+  });
+  const cur = $("#swim g.step.current");
+  if (cur) { const box = $("#swim"), r = cur.getBoundingClientRect(), b = box.getBoundingClientRect();
+    if (r.left < b.left || r.right > b.right) box.scrollLeft += r.left - b.left - 40; }
+}
+function step(d) { const p = PHASES.find(x => x.id === state.id); state.i = Math.max(0, Math.min(p.steps.length - 1, state.i + d)); hideTip(); drawSteps(); }
+function select(id, scroll) {
+  state.id = id; state.i = 0; hideTip();
+  document.querySelectorAll("#picker button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.id === id)));
+  document.querySelectorAll("#map th.ph, #map td.cell").forEach(el => el.classList.toggle("on", el.dataset.id === id));
+  renderPhase();
+  try { history.replaceState(null, "", "#" + id); } catch (e) { /* sandboxed viewers */ }
+  if (scroll) $("#h-phase").scrollIntoView({behavior: "smooth", block: "start"});
+}
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea")) return;
+  if (e.key === "ArrowRight") step(1); else if (e.key === "ArrowLeft") step(-1);
+});
+addEventListener("scroll", hideTip, {passive: true});
+$("#updated").textContent = P.updated;
+renderMap(); renderPicker();
+const start = (location.hash || "").slice(1);
+select(PHASES.some(p => p.id === start) ? start : PHASES[0].id, false);
+</script>

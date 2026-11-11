@@ -41,6 +41,8 @@ outputs/
 *.jpeg
 *.html
 !docs/index.html
+!docs/build.html
+!docs/demo.html
 *.pdf
 
 # IDE
@@ -99,3 +101,4 @@ wheels/
 
 # share preview for link cards (portfolio rule R18)
 !docs/assets/preview.png
+!docs/assets/preview-build.png

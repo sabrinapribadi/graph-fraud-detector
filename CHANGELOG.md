@@ -2,6 +2,14 @@
 
 Newest first. Each entry uses STAR (Situation, Task, Action, Result) so it can be told as a story.
 
+## [9.3.0] — 2026-11-11 — Results page, technical walkthrough and threshold what-if (R3, R9, R14, R19)
+**Files:** docs/index.html (new results page), docs/demo.html (the former page), docs/build.html (new), docs/assets/preview*.png, tests/browser/ (new), scripts/evaluate_models.py, data/eval_results.json, docs/adr/ADR-004, docs/brief.yaml, README.md, .github/workflows/ci.yml
+- **Situation:** The live page was a demo without the problem, the data, the decisions or the failures.
+- **Task:** A results page readable in two minutes with a practitioner what-if, and a phase-by-phase walkthrough, both browser-tested.
+- **Action:** Threshold curve added to the evaluation (same seeded forest); results page with a threshold slider and quality by time step; walkthrough of six phases including three failures; demo kept at demo.html; browser tests in CI; Pages deploy only after tests.
+- **Result:** At the default threshold 784 of 1,083 illicit payments are caught with 57 false alarms; all browser checks pass.
+- **Talking point:** "Slide the threshold and see the catch, the misses and the false alarms an analyst team would face."
+
 ## [9.2.0] — 2026-11-11 — Evidence tables for every cited paper (R2)
 **Files:** docs/references.yaml (new), scripts/evidence.py (new), docs/adr/ADR-*.md, data/outputs/references_evidence.json, CHANGELOG.md
 - **Situation:** ADRs listed papers without venue, peer review or citation counts.

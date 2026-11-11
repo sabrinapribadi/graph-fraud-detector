@@ -8,7 +8,7 @@
 2. **Why:** Illicit payments hide in a 200,000-transaction graph; investigators need a ranked, explained shortlist instead of raw flows.
 3. **Who:** Users: anti-money-laundering analysts and investigators.
    - Data: the public Elliptic dataset, 203,769 transactions; 4,545 labelled illicit and 42,019 licit (Weber et al. 2019).
-4. **Where:** [Dashboard](https://graph-fraud-detector.streamlit.app) on Streamlit Community Cloud; [static demo](https://sabrinapribadi.github.io/graph-fraud-detector/) on GitHub Pages; the API runs locally.
+4. **Where:** [Results page](https://sabrinapribadi.github.io/graph-fraud-detector/), [technical walkthrough](https://sabrinapribadi.github.io/graph-fraud-detector/build.html) and [transaction demo](https://sabrinapribadi.github.io/graph-fraud-detector/demo.html) on GitHub Pages; [dashboard](https://graph-fraud-detector.streamlit.app) on Streamlit Community Cloud; the API runs locally.
 5. **When it fails:** Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way.
    - Every model collapses after a dark-market shutdown at time step 43 (F1 0.904 before, 0.031 after). No live A/B test: historical data.
 6. **How:** Random forest on 166 features with the dataset authors' time split; GraphSAGE and GAT on the graph; a bandit picks the alert threshold.
@@ -34,7 +34,8 @@
 | Service | What it serves | Free-tier limits (R20) |
 |---|---|---|
 | [15-tab dashboard](https://graph-fraud-detector.streamlit.app) | Models, risk analytics, AI assistant | Streamlit Community Cloud: sleeps after 12 hours without traffic; any visitor can wake it; up to 2.7 GB memory |
-| [Static demo](https://sabrinapribadi.github.io/graph-fraud-detector/) | Measured quality and real held-out transactions | GitHub Pages, no server: the fallback while the dashboard sleeps |
+| [Results page](https://sabrinapribadi.github.io/graph-fraud-detector/) and [walkthrough](https://sabrinapribadi.github.io/graph-fraud-detector/build.html) | Measured quality, a threshold what-if, every phase | GitHub Pages, no server: the fallback while the dashboard sleeps |
+| [Transaction demo](https://sabrinapribadi.github.io/graph-fraud-detector/demo.html) | Real held-out transactions with their scores | GitHub Pages, no server |
 | [API (11 endpoints)](#run-the-api-locally) | FastAPI with docs at `/docs` | Runs locally; no paid host |
 
 ## Features

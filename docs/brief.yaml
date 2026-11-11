@@ -13,7 +13,7 @@ brief:
       - "Data: the public Elliptic dataset, 203,769 transactions; 4,545 labelled illicit and 42,019 licit (Weber et al. 2019)."
   - w: Where
     lines:
-      - "[Dashboard](https://graph-fraud-detector.streamlit.app) on Streamlit Community Cloud; [static demo](https://sabrinapribadi.github.io/graph-fraud-detector/) on GitHub Pages; the API runs locally."
+      - "[Results page](https://sabrinapribadi.github.io/graph-fraud-detector/), [technical walkthrough](https://sabrinapribadi.github.io/graph-fraud-detector/build.html) and [transaction demo](https://sabrinapribadi.github.io/graph-fraud-detector/demo.html) on GitHub Pages; [dashboard](https://graph-fraud-detector.streamlit.app) on Streamlit Community Cloud; the API runs locally."
   - w: When it fails
     lines:
       - "Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way."
