@@ -131,10 +131,12 @@ class EllipticDataLoader:
         
         # Map classes to numeric labels
         def map_label(class_val):
+            # Elliptic dataset (Weber et al. 2019): class "1" = illicit (4,545), class "2" = licit (42,019).
+            # Fixed 2026-11: this mapping was inverted, so earlier models flagged licit transactions as fraud.
             if class_val == '1':
-                return 0  # licit
-            elif class_val == '2':
                 return 1  # illicit
+            elif class_val == '2':
+                return 0  # licit
             else:
                 return -1  # unknown
         

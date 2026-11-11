@@ -28,3 +28,4 @@ ADR-003 (PostgreSQL gold layer)
     └── provides /stats/daily endpoint for time-series reporting
     └── ready to log ADR-001 bandit decisions for longitudinal evaluation
 ```
+| [ADR-004](ADR-004-label-fix-and-evaluation.md) | Label fix and pre-registered evaluation | Accepted | Elliptic class 1 = illicit; random-forest check on the paper's temporal split (illicit F1 0.788 ± 0.05); app GraphSAGE reported with caveat; live API host retired. |
