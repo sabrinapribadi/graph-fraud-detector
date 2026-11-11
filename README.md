@@ -1,25 +1,41 @@
 # Graph Fraud Detector
 
-An end-to-end Graph Neural Network system for detecting fraudulent Bitcoin transactions,
-featuring quantitative risk analysis, a 15-tab interactive dashboard, a LangChain AI agent
-with 9 tools and multi-turn conversation history, RAG-powered fraud knowledge search,
-Phase 6 advanced quant-finance analytics, a FastAPI REST service with medallion architecture persistence (MongoDB Atlas bronze layer +
-Supabase PostgreSQL gold layer), and a LinUCB contextual bandit for adaptive fraud threshold selection —
-designed so non-finance users can interpret every result in plain English.
+<!-- brief:start -->
 
-[![Dashboard](https://img.shields.io/badge/Live_Dashboard-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector.streamlit.app)
-[![API Demo](https://img.shields.io/badge/API_Demo-GitHub_Pages-238636?style=for-the-badge&logo=github)](https://sabrinapribadi.github.io/graph-fraud-detector/)
+## At a glance
+
+1. **What:** A Bitcoin fraud detector: graph and tabular models score transactions, with a dashboard, an AI assistant and risk analytics.
+2. **Why:** Illicit payments hide in a 200,000-transaction graph; investigators need a ranked, explained shortlist instead of raw flows.
+3. **Who:** Users: anti-money-laundering analysts and investigators.
+   - Data: the public Elliptic dataset, 203,769 transactions; 4,545 labelled illicit and 42,019 licit (Weber et al. 2019).
+4. **Where:** [Dashboard](https://graph-fraud-detector.streamlit.app) on Streamlit Community Cloud; [static demo](https://sabrinapribadi.github.io/graph-fraud-detector/) on GitHub Pages; the API runs locally.
+5. **When it fails:** Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way.
+   - Every model collapses after a dark-market shutdown at time step 43 (F1 0.904 before, 0.031 after). No live A/B test: historical data.
+6. **How:** Random forest on 166 features with the dataset authors' time split; GraphSAGE and GAT on the graph; a bandit picks the alert threshold.
+   - Result: illicit F1 0.815 on later time steps (published 0.788); F1 is the balance of catching fraud and avoiding false alarms (1 is perfect).
+
+**Skills applied** (each linked to the file or decision that shows it):
+
+- **Graph machine learning:** GraphSAGE and GAT on the transaction graph — [gnn_model.py](src/models/gnn_model.py), [advanced_gnn.py](src/models/advanced_gnn.py)
+- **Machine learning and evaluation:** random forest, time-based split, per-step F1, replication of the published benchmark — [ADR-004](docs/adr/ADR-004-label-fix-and-evaluation.md), [evaluate_models.py](scripts/evaluate_models.py)
+- **Reinforcement learning:** LinUCB contextual bandit for the alert threshold — [ADR-001](docs/adr/ADR-001-rl-threshold-bandit.md), [bandit.py](src/rl/bandit.py)
+- **Quantitative risk:** Monte Carlo loss, value at risk, stress tests, Basel III capital — [risk_analysis.py](src/analytics/risk_analysis.py), [regulatory_capital.py](src/analytics/regulatory_capital.py)
+- **GenAI and agents:** LangChain agent with 9 tools, retrieval over a fraud knowledge base — [fraud_agent.py](src/agent/fraud_agent.py), [rag_agent.py](src/agent/rag_agent.py)
+- **Data engineering and services:** FastAPI service, medallion layers (document store and Postgres) — [ADR-002](docs/adr/ADR-002-mongodb-alert-layer.md), [ADR-003](docs/adr/ADR-003-postgresql-gold-layer.md)
+- **CI/CD:** GitHub Actions lint and tests on every push; static demo on Pages — [ci.yml](.github/workflows/ci.yml)
+
+<!-- brief:end -->
+
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 
-## Live Services
+## Live services and free-tier limits
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| **15-Tab Dashboard** | [graph-fraud-detector.streamlit.app](https://graph-fraud-detector.streamlit.app) | Streamlit Community Cloud — 1 GB RAM, free |
-| **Static demo** | [sabrinapribadi.github.io/graph-fraud-detector](https://sabrinapribadi.github.io/graph-fraud-detector/) | GitHub Pages: measured quality, real held-out examples, no server ($0) |
-| **API (11 endpoints)** | [Run the API locally](#run-the-api-locally) | FastAPI with Swagger docs at `/docs`; no paid host |
-| **GitHub Repository** | [github.com/sabrinapribadi/graph-fraud-detector](https://github.com/sabrinapribadi/graph-fraud-detector) | Full source code |
+| Service | What it serves | Free-tier limits (R20) |
+|---|---|---|
+| [15-tab dashboard](https://graph-fraud-detector.streamlit.app) | Models, risk analytics, AI assistant | Streamlit Community Cloud: sleeps after 12 hours without traffic; any visitor can wake it; up to 2.7 GB memory |
+| [Static demo](https://sabrinapribadi.github.io/graph-fraud-detector/) | Measured quality and real held-out transactions | GitHub Pages, no server: the fallback while the dashboard sleeps |
+| [API (11 endpoints)](#run-the-api-locally) | FastAPI with docs at `/docs` | Runs locally; no paid host |
 
 ## Features
 

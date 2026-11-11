@@ -2,6 +2,14 @@
 
 Newest first. Each entry uses STAR (Situation, Task, Action, Result) so it can be told as a story.
 
+## [9.1.0] — 2026-11-11 — At-a-glance brief (R22), free-tier notes
+**Files:** docs/brief.yaml (new), scripts/brief.py (new), README.md, docs/index.html, .github/workflows/ci.yml, CHANGELOG.md
+- **Situation:** A reader had to scroll and piece together what the Elliptic detector is, why, who, where, when it fails and how.
+- **Task:** Put one numbered 5W1H brief first, with the skills applied and links to proof, without repeating it below (R22).
+- **Action:** One source (docs/brief.yaml) written into the static demo page by script and checked in CI. Removed the intro paragraph and live-link badges the brief repeats; live-services table now states Streamlit's 12-hour sleep and the static fallback (R20).
+- **Result:** The first screen answers the six questions; CI fails if the brief and its source drift apart.
+- **Talking point:** "Six lines tell you what it is, why, who uses it, where it runs, how it fails and how it works."
+
 ## [9.0.0] — 2026-11-11 — Label fix, measured evaluation, no paid hosting
 **Files:** src/data/loader.py, tests/test_labels.py, scripts/evaluate_models.py, scripts/build_static_demo.py, src/utils/measured.py, src/ui/dashboard.py, src/agent/rag_agent.py, docs/index.html, docs/data/demo.json, data/eval_results.json, docs/adr/ADR-004, README.md, PRD.md, .github/workflows/ci.yml; render.yaml removed
 - **Situation:** An audit found the loader mapped Elliptic class "1" (illicit) to licit and "2" (licit) to illicit; the model, risk numbers and "top suspicious" lists described licit transactions as fraud. Headline metrics were typed, not measured, and two paid hosting services billed while idle.

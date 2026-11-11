@@ -382,7 +382,20 @@
       height: 1.8rem;
     }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  </style>
+  /* brief:css:start (rule R22, written by scripts/brief.py) */
+.brief { display: grid; gap: 12px; padding-block: 18px 4px; text-align: left; }
+.brief a { color: var(--accent); }
+.brief-list { list-style: none; margin: 0; padding: 0 !important; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+.brief-list li { display: grid; align-content: start; gap: 4px; padding: 12px 14px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line, var(--border)); border-radius: 8px; }
+.brief-w { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.brief-main { font-size: 14.5px; line-height: 1.45; color: var(--fg, var(--text)); }
+.brief-sub { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.brief-skills summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.brief-skills ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.45; }
+.brief-proof { font-size: 12px; margin-left: 4px; white-space: nowrap; }
+/* brief:css:end */
+</style>
 </head>
 <body>
 
@@ -416,6 +429,10 @@
   <!-- Hero -->
   <div class="hero">
     <h1>Screening Bitcoin transactions for<br><span>money laundering</span></h1>
+<!-- brief:start -->
+<section class="brief" id="brief" aria-label="Project at a glance"><span class="eyebrow">At a glance</span><ol class="brief-list"><li><span class="brief-w">1 · What</span><span class="brief-main">A Bitcoin fraud detector: graph and tabular models score transactions, with a dashboard, an AI assistant and risk analytics.</span></li><li><span class="brief-w">2 · Why</span><span class="brief-main">Illicit payments hide in a 200,000-transaction graph; investigators need a ranked, explained shortlist instead of raw flows.</span></li><li><span class="brief-w">3 · Who</span><span class="brief-main">Users: anti-money-laundering analysts and investigators.</span><span class="brief-sub">Data: the public Elliptic dataset, 203,769 transactions; 4,545 labelled illicit and 42,019 licit (Weber et al. 2019).</span></li><li><span class="brief-w">4 · Where</span><span class="brief-main"><a href="https://graph-fraud-detector.streamlit.app">Dashboard</a> on Streamlit Community Cloud; <a href="https://sabrinapribadi.github.io/graph-fraud-detector/">static demo</a> on GitHub Pages; the API runs locally.</span></li><li><span class="brief-w">5 · When it fails</span><span class="brief-main">Checked against the published benchmark first (illicit F1 within ±0.05 of 0.788): passed. A label inversion was found and fixed on the way.</span><span class="brief-sub">Every model collapses after a dark-market shutdown at time step 43 (F1 0.904 before, 0.031 after). No live A/B test: historical data.</span></li><li><span class="brief-w">6 · How</span><span class="brief-main">Random forest on 166 features with the dataset authors&#x27; time split; GraphSAGE and GAT on the graph; a bandit picks the alert threshold.</span><span class="brief-sub">Result: illicit F1 0.815 on later time steps (published 0.788); F1 is the balance of catching fraud and avoiding false alarms (1 is perfect).</span></li></ol><details class="brief-skills" open><summary>Skills applied, with proof</summary><ul><li><b>Graph machine learning</b> GraphSAGE and GAT on the transaction graph <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/gnn_model.py">gnn_model.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/models/advanced_gnn.py">advanced_gnn.py</a></li><li><b>Machine learning and evaluation</b> random forest, time-based split, per-step F1, replication of the published benchmark <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-004-label-fix-and-evaluation.md">ADR-004</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/scripts/evaluate_models.py">evaluate_models.py</a></li><li><b>Reinforcement learning</b> LinUCB contextual bandit for the alert threshold <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-001-rl-threshold-bandit.md">ADR-001</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/rl/bandit.py">bandit.py</a></li><li><b>Quantitative risk</b> Monte Carlo loss, value at risk, stress tests, Basel III capital <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/risk_analysis.py">risk_analysis.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/analytics/regulatory_capital.py">regulatory_capital.py</a></li><li><b>GenAI and agents</b> LangChain agent with 9 tools, retrieval over a fraud knowledge base <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/fraud_agent.py">fraud_agent.py</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/src/agent/rag_agent.py">rag_agent.py</a></li><li><b>Data engineering and services</b> FastAPI service, medallion layers (document store and Postgres) <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-002-mongodb-alert-layer.md">ADR-002</a> <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/docs/adr/ADR-003-postgresql-gold-layer.md">ADR-003</a></li><li><b>CI/CD</b> GitHub Actions lint and tests on every push; static demo on Pages <a class="brief-proof" href="https://github.com/sabrinapribadi/graph-fraud-detector/blob/main/.github/workflows/ci.yml">ci.yml</a></li></ul></details></section>
+<!-- brief:end -->
+
     <p>
       Public Elliptic dataset (Weber et al. 2019). A static demo: every number below is precomputed by the
       repository's scripts. Run the FastAPI service locally for live calls.
