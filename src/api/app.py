@@ -1,7 +1,7 @@
 """
 FastAPI Application for Fraud Detection
 
-Runtime memory budget: 512 MB (Render Starter plan).
+Runtime memory budget: 512 MB (designed for small free hosts; runs locally or in Docker).
 
 Strategy: all heavy computation (data loading, GNN training) happens during
 `docker build` via scripts/precompute_api_cache.py.  At runtime the app loads:

@@ -1,8 +1,8 @@
 PRODUCT REQUIREMENT DOCUMENT (PRD)
 Project: Graph Fraud Detector — GNN-Powered Bitcoin Transaction Fraud Detection
-Version: 8.0 (GitHub Pages Interactive API Demo, Render Dashboard Suspended)
+Version: 8.1 (label fix: Elliptic class 1 = illicit; measured evaluation, ADR-004; paid hosting retired)
 Author: Sabrina Pribadi
-Date: July 10, 2026
+Date: November 11, 2026
 Status: Completed
 
 
@@ -462,9 +462,10 @@ Data Pipeline:
 7. Sample 2,000 balanced nodes for GNN training (50% illicit, 50% licit)
 8. Build PyTorch tensors (feature matrix, adjacency matrix, labels)
 
-Render Services:
-- Dashboard: graph-fraud-detector-dashboards.onrender.com  (Docker, port 8501)
-- API:       graph-fraud-detector-api-service.onrender.com  (Docker, port 8000)
+Hosting (since November 2026, no paid services):
+- Dashboard: Streamlit Community Cloud (graph-fraud-detector.streamlit.app)
+- Demo: GitHub Pages, static, reads precomputed JSON (scripts/build_static_demo.py)
+- API: local or Docker (uvicorn src.api.app:app); the former Render services are retired
 
 
 8. TECHNICAL ARCHITECTURE
@@ -723,10 +724,13 @@ Render Services:
 
 12. SUCCESS CRITERIA
 
-Model performance (all achieved):
-- AUC >= 0.95 on held-out test set (achieved: 0.955)
-- F1 Score >= 0.88 (achieved: 0.898)
-- Accuracy >= 88% (achieved: 89.0%)
+Model performance (re-measured after the label fix, ADR-004):
+- Earlier claims (AUC 0.955, F1 0.898, accuracy 89.0%) were typed, not produced by a script, and came from
+  inverted labels; they are withdrawn.
+- Pipeline check vs Weber et al. (2019), temporal split: random forest illicit F1 0.815 (published 0.788;
+  pre-set tolerance ±0.05): passed. Precision 93.2%, recall 72.4%; F1 0.03 after the step-43 dark-market shutdown.
+- Dashboard GraphSAGE (balanced 3,000-node sample, random split): AUC 0.956, illicit F1 0.877; flattered by
+  the balanced test (half illicit vs about 10% in reality).
 
 Functional requirements (all achieved):
 - LangChain agent handles all 9 tool categories with correct statistics
@@ -735,7 +739,7 @@ Functional requirements (all achieved):
 - RAG returns relevant source documents for 5+ question types
 - 15-tab Streamlit dashboard loads in under 3 seconds
 - FastAPI serves all 8 endpoints with Swagger documentation
-- Docker containers deploy to Render and pass health checks
+- Docker containers build and pass health checks locally (no paid host)
 - All 5 Phase 6 analytics modules run end-to-end with graceful fallbacks
 
 Business Translation requirements (all achieved):
@@ -769,10 +773,12 @@ Code quality requirements (all achieved):
 
 - Data Source: https://www.kaggle.com/datasets/ellipticco/elliptic-data-set
 - GitHub Repository: https://github.com/sabrinapribadi/graph-fraud-detector
-- Live Dashboard: https://graph-fraud-detector-dashboards.onrender.com
-- API Documentation: https://graph-fraud-detector-api-service.onrender.com/docs
+- Live Dashboard: https://graph-fraud-detector.streamlit.app
+- Static demo: https://sabrinapribadi.github.io/graph-fraud-detector/
+- API documentation: http://localhost:8000/docs when run locally
+- Reference: Weber, M., Domeniconi, G., et al. (2019). Anti-Money Laundering in Bitcoin. arXiv 1908.02591
 - Tech Stack: PyTorch, torch-geometric, NetworkX, Streamlit, FastAPI, LangChain, LangGraph,
-  ChromaDB, OpenAI GPT-4o-mini, text-embedding-3-small, Optuna, Prophet, SciPy, Docker, Render
+  ChromaDB, OpenAI GPT-4o-mini, text-embedding-3-small, Optuna, Prophet, SciPy, Docker
 - GNN Models: GraphSAGE, GAT, EnsembleFraudDetector
 - Core Quant Finance: Monte Carlo simulation, Expected Loss (PD × EAD × LGD), VaR (95%), TVM
 - Phase 6 Quant Finance: Stress Testing (5 scenarios), Sharpe/Sortino/IR/Calmar, Prophet/Holt-

@@ -139,3 +139,7 @@ efficient retrieval of recent alerts without full collection scan.
 
 - ADR-001: MongoDB alert logs provide the raw signal for future online LinUCB updates
 - Future ADR: PostgreSQL (Supabase) gold layer for aggregated fraud analytics
+
+## Amendment (2026-11-11)
+
+- The paid Render host this decision mentions was retired (ADR-004). The layer remains in the code as an optional local feature; the public demo no longer writes to it.

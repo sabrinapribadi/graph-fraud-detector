@@ -1,0 +1,194 @@
+{
+ "stats": {
+  "total_nodes": 203769,
+  "total_edges": 234355,
+  "illicit_count": 4545,
+  "licit_count": 42019,
+  "unknown_count": 157205,
+  "fraud_rate": "9.8%",
+  "avg_degree": 2.3,
+  "components": 49
+ },
+ "insights": [
+  {
+   "title": "No Money Laundering Rings Detected",
+   "description": "No significant money laundering patterns were found in the current dataset. The network appears to have a low concentration of illicit connections.",
+   "category": "pattern",
+   "severity": "LOW"
+  },
+  {
+   "title": "No Rapid Chains Detected",
+   "description": "No rapid transaction chains were found in the current dataset. Transaction velocity appears normal.",
+   "category": "pattern",
+   "severity": "LOW"
+  },
+  {
+   "title": "Mixed Signal Nodes Detected",
+   "description": "Found 26 nodes with mixed licit/illicit connections. These nodes may represent money laundering gateways or compromised accounts.",
+   "category": "anomaly",
+   "severity": "MEDIUM"
+  },
+  {
+   "title": "Anomaly Outliers Detected",
+   "description": "Found 1987 outlier nodes (1987 high-degree, 0 low-degree). Top outlier Node 2984918 has degree 473 (z-score: 108.75).",
+   "category": "anomaly",
+   "severity": "HIGH"
+  }
+ ],
+ "examples": [
+  {
+   "tx_id": "151190965",
+   "time_step": 39,
+   "true_label": "illicit",
+   "fraud_probability": 0.56,
+   "risk_level": "MEDIUM",
+   "prediction": "illicit"
+  },
+  {
+   "tx_id": "72601867",
+   "time_step": 42,
+   "true_label": "illicit",
+   "fraud_probability": 1.0,
+   "risk_level": "HIGH",
+   "prediction": "illicit"
+  },
+  {
+   "tx_id": "74816463",
+   "time_step": 38,
+   "true_label": "illicit",
+   "fraud_probability": 1.0,
+   "risk_level": "HIGH",
+   "prediction": "illicit"
+  },
+  {
+   "tx_id": "115949445",
+   "time_step": 38,
+   "true_label": "illicit",
+   "fraud_probability": 0.64,
+   "risk_level": "MEDIUM",
+   "prediction": "illicit"
+  },
+  {
+   "tx_id": "114656125",
+   "time_step": 38,
+   "true_label": "illicit",
+   "fraud_probability": 0.96,
+   "risk_level": "HIGH",
+   "prediction": "illicit"
+  },
+  {
+   "tx_id": "97702225",
+   "time_step": 40,
+   "true_label": "illicit",
+   "fraud_probability": 1.0,
+   "risk_level": "HIGH",
+   "prediction": "illicit"
+  },
+  {
+   "tx_id": "6978676",
+   "time_step": 40,
+   "true_label": "licit",
+   "fraud_probability": 0.04,
+   "risk_level": "LOW",
+   "prediction": "licit"
+  },
+  {
+   "tx_id": "72645876",
+   "time_step": 42,
+   "true_label": "licit",
+   "fraud_probability": 0.06,
+   "risk_level": "LOW",
+   "prediction": "licit"
+  },
+  {
+   "tx_id": "12677208",
+   "time_step": 41,
+   "true_label": "licit",
+   "fraud_probability": 0.08,
+   "risk_level": "LOW",
+   "prediction": "licit"
+  },
+  {
+   "tx_id": "73433755",
+   "time_step": 42,
+   "true_label": "licit",
+   "fraud_probability": 0.2,
+   "risk_level": "LOW",
+   "prediction": "licit"
+  },
+  {
+   "tx_id": "96932441",
+   "time_step": 40,
+   "true_label": "licit",
+   "fraud_probability": 0.02,
+   "risk_level": "LOW",
+   "prediction": "licit"
+  },
+  {
+   "tx_id": "96932189",
+   "time_step": 40,
+   "true_label": "licit",
+   "fraud_probability": 0.0,
+   "risk_level": "LOW",
+   "prediction": "licit"
+  }
+ ],
+ "evaluation": {
+  "design": "ADR-004",
+  "random_forest_temporal": {
+   "train_rows": 29894,
+   "test_rows": 16670,
+   "test_illicit": 1083,
+   "precision": 0.9322235434007135,
+   "recall": 0.7239150507848569,
+   "f1": 0.814968814968815,
+   "auc": 0.9024932051184307,
+   "f1_by_step": {
+    "35": 0.9693593314763231,
+    "36": 0.8918918918918919,
+    "37": 0.7575757575757576,
+    "38": 0.9433962264150944,
+    "39": 0.9440993788819876,
+    "40": 0.78125,
+    "41": 0.9511111111111111,
+    "42": 0.8701594533029613,
+    "43": 0.0,
+    "44": 0.05555555555555555,
+    "45": 0.0,
+    "46": 0.3333333333333333,
+    "47": 0.0,
+    "48": 0.0,
+    "49": 0.034482758620689655
+   },
+   "f1_before_shutdown": 0.9039351851851852,
+   "f1_after_shutdown": 0.030612244897959183,
+   "paper": {
+    "precision": 0.956,
+    "recall": 0.67,
+    "f1": 0.788
+   },
+   "check_passed": true
+  },
+  "graphsage_as_built": {
+   "sample_nodes": 3000,
+   "test_nodes": 600,
+   "test_illicit_share": 0.5083333253860474,
+   "auc": 0.9558766323978883,
+   "precision": 0.9175627240143369,
+   "recall": 0.839344262295082,
+   "f1": 0.8767123287671232,
+   "confusion": [
+    [
+     272,
+     23
+    ],
+    [
+     49,
+     256
+    ]
+   ],
+   "caveat": "Balanced 3,000-node sample with a random split: illicit is ~50% of test nodes, not ~10%; flatters the model."
+  },
+  "seconds": 47
+ }
+}

@@ -20,6 +20,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from src.data.loader import EllipticDataLoader
+from src.utils.measured import ILLICIT, NODES, measured
+
+M = measured()   # ADR-004: measured numbers only
 from src.models.gnn_model import FraudDetector
 from src.analytics.risk_analysis import QuantitativeRiskAnalyzer
 from src.analytics.auto_discovery import AutoDiscovery
@@ -534,7 +537,7 @@ with st.sidebar:
         )
 
     st.markdown("**Model Performance**")
-    _perf_bars = {"AUC": 0.955, "F1": 0.898, "Accuracy": 0.912}
+    _perf_bars = {"AUC": round(M["gs_auc"], 3), "F1": round(M["gs_f1"], 3), "Accuracy": round(M["gs_accuracy"], 3)}   # balanced sample (ADR-004)
     for _met, _val in _perf_bars.items():
         st.markdown(
             f'<div style="display:flex;justify-content:space-between;font-size:0.82rem;'
@@ -595,7 +598,8 @@ with tab1:
     st.markdown(
         '<div class="context-box">Graph-level overview of the Elliptic Bitcoin dataset: '
         '203,769 nodes, 234,355 edges, 166 features across 49 bi-weekly time steps. '
-        'GraphSAGE model achieves AUC 0.955.</div>',
+        f'GraphSAGE reaches AUC {M["gs_auc"]:.3f} on a balanced sample; on the dataset authors\' temporal test a random forest '
+        f'reaches illicit F1 {M["rf_f1"]:.3f} (published: {M["paper_f1"]:.3f}).</div>',
         unsafe_allow_html=True,
     )
 
@@ -626,14 +630,14 @@ with tab1:
             )
         with k3:
             st.markdown(
-                '<div class="kpi-card"><div class="kpi-value" style="color:#4A90D9;">0.955</div>'
-                '<div class="kpi-label">Model AUC</div></div>',
+                f'<div class="kpi-card"><div class="kpi-value" style="color:#4A90D9;">{M["gs_auc"]:.3f}</div>'
+                '<div class="kpi-label">GraphSAGE AUC (balanced sample)</div></div>',
                 unsafe_allow_html=True,
             )
         with k4:
             st.markdown(
-                '<div class="kpi-card"><div class="kpi-value" style="color:#00CC96;">89.0%</div>'
-                '<div class="kpi-label">Detection Rate (F1=0.898)</div></div>',
+                f'<div class="kpi-card"><div class="kpi-value" style="color:#00CC96;">{100 * M["rf_recall"]:.1f}%</div>'
+                f'<div class="kpi-label">Illicit found, unseen time steps (F1={M["rf_f1"]:.3f})</div></div>',
                 unsafe_allow_html=True,
             )
 
@@ -673,11 +677,11 @@ with tab1:
                     _est_ill1  = int(_pred_ill1 * _scale1)
                     _est_lit1  = int(_pred_lit1 * _scale1)
                 except Exception:
-                    _est_ill1 = 42019
-                    _est_lit1 = 161750
+                    _est_ill1 = ILLICIT           # labelled illicit (fallback when the model is unavailable)
+                    _est_lit1 = NODES - ILLICIT
             else:
-                _est_ill1 = 42019
-                _est_lit1 = 161750
+                _est_ill1 = ILLICIT
+                _est_lit1 = NODES - ILLICIT
 
             _donut_pr = go.Figure(go.Pie(
                 labels=["Pred. Illicit", "Pred. Licit"],
@@ -784,9 +788,10 @@ with tab1:
 
     _biz_box(
         "Are we catching the fraudsters?",
-        "Yes — the GNN achieves AUC 0.955 (near-perfect discrimination) and F1 0.898. "
-        "The left donut shows ground-truth labels; the right shows model predictions on all 203k nodes. "
-        "The ~21% illicit rate among labeled nodes is corroborated by the model's predictions across unlabeled nodes.",
+        f"Partly. On unseen time steps a random forest flags {100 * M['rf_recall']:.0f}% of illicit transactions, and "
+        f"{100 * M['rf_precision']:.0f}% of what it flags is illicit (F1 {M['rf_f1']:.2f}, published {M['paper_f1']:.2f}). "
+        f"After a dark-market shutdown at step 43 every model fails (F1 {M['rf_f1_after']:.2f}). "
+        f"About {100 * M['illicit_share']:.1f}% of labelled transactions are illicit. The left donut shows labels; the right, predictions.",
     )
 
 

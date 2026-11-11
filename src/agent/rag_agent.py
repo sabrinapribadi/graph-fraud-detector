@@ -112,7 +112,8 @@ FRAUD_KNOWLEDGE_BASE: List[Dict[str, str]] = [
             "the full graph during training, GraphSAGE uses mini-batch training with "
             "neighbourhood sampling, making it scalable to the 203,769-node Elliptic graph. "
             "The model uses two layers, 32 hidden dimensions, mean aggregation, batch "
-            "normalisation, and dropout (0.2) to achieve AUC 0.955 and F1 0.898."
+            "normalisation, and dropout. Measured quality is in data/eval_results.json (ADR-004): on a balanced sample it reaches AUC about 0.96, "
+            "but the dataset authors' temporal benchmark favours a random forest on node features (illicit F1 0.79 published)."
         ),
         "category": "model",
         "source": "GNN Architecture",
@@ -136,7 +137,7 @@ FRAUD_KNOWLEDGE_BASE: List[Dict[str, str]] = [
         "text": (
             "The Elliptic dataset contains 203,769 Bitcoin transaction nodes and 234,355 "
             "directed edges representing BTC flows. Nodes are labeled as illicit (class 1, "
-            "42,019 nodes, ~21%), licit (class 0, 4,545 nodes, ~2%), or unknown (~77%). "
+            "4,545 nodes, ~2%), licit (class 2, 42,019 nodes, ~21%), or unknown (~77%) (Weber et al. 2019). "
             "Each node has 166 features: the first 94 are local transaction features "
             "(amounts, fees, input/output counts) and the remaining 72 are aggregated "
             "neighbourhood features. The dataset covers 49 time steps from 2011 to 2014. "
@@ -321,9 +322,9 @@ FRAUD_KNOWLEDGE_BASE: List[Dict[str, str]] = [
             "above 0.5 increases precision (fewer false positives) but reduces recall (more "
             "missed fraud). For high-stakes financial compliance, recall is often prioritised "
             "over precision — it is less costly to investigate a false positive than to miss "
-            "an illicit transaction. At threshold 0.5 the model achieves precision 90.6% "
-            "and recall 89.0%. Lowering the threshold to 0.3 increases recall to ~95% at "
-            "the cost of doubling false positives."
+            "an illicit transaction. On the temporal benchmark at threshold 0.5, the random forest flags about 72% "
+            "of illicit transactions with about 93% precision (data/eval_results.json). Lowering the threshold "
+            "raises recall at the cost of more false positives."
         ),
         "category": "model",
         "source": "Precision-Recall Trade-off",
@@ -333,8 +334,8 @@ FRAUD_KNOWLEDGE_BASE: List[Dict[str, str]] = [
         "text": (
             "Deployment architecture: the dashboard (Streamlit on port 8501) and API "
             "(FastAPI on port 8000) are containerised separately using Docker with Python "
-            "3.12-slim base images. Both services are deployed on Render's free tier with "
-            "512 MB RAM. Auto-deploy on Git push is configured via render.yaml. Memory "
+            "3.12-slim base images and run locally. The public dashboard is on Streamlit Community Cloud and the "
+            "API demo is a static GitHub Pages site (no paid hosting). Memory "
             "management for Apple Silicon MPS is handled by setting PYTORCH_MPS_HIGH_"
             "WATERMARK_RATIO=0.0. On CPU-only hosts, PyTorch automatically falls back to CPU."
         ),

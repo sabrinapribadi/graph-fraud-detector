@@ -1,6 +1,6 @@
 # ADR-004: Label Fix and a Pre-Registered Evaluation
 
-**Status:** Accepted — written and pushed before any model is retrained or scored
+**Status:** Accepted — written and pushed before any model was retrained or scored; results appended
 **Date:** 2026-11-11
 **Deciders:** Sabrina Pribadi
 
@@ -58,6 +58,19 @@
 ## Correction before any run (2026-11-11)
 
 - §3 first named the API cache's setup (2,000 nodes, 50 epochs). The dashboard, which shows the headline numbers, uses the setup now stated in §3. Corrected and pushed before any model was retrained.
+
+## Empirical results (2026-11-11)
+
+| Check | Target | Result |
+|---|---|---|
+| Label counts after the fix | 4,545 / 42,019 / 157,205 | equal (tested) |
+| Random forest, temporal split, illicit F1 | 0.788 ± 0.05 | **0.815: passed** (precision 0.932, recall 0.724, AUC 0.902) |
+| F1 before / after the step-43 shutdown | report | 0.904 / 0.031 (the paper reports the same collapse) |
+| Dashboard GraphSAGE (balanced 3,000-node sample) | report | AUC 0.956, illicit F1 0.877, precision 0.918, recall 0.839; test half illicit |
+
+- **Downstream:** README, PRD, knowledge-base text and dashboard now read `data/eval_results.json`; a "structuring" insight was dropped because Elliptic features are anonymised, not amounts.
+- **Hosting:** the paid API and dashboard services are retired; the demo is static on GitHub Pages and the dashboard stays on Streamlit Community Cloud.
+- **Also found:** the old demo's prediction button sent 166 zeros for every transaction; the static demo shows real held-out transactions instead.
 
 ## Considered Options
 

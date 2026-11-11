@@ -188,3 +188,7 @@ def upsert_daily_alert(...):
   aggregates (gold) — these layers are complementary
 - ADR-001: `rl_threshold_decisions` table provides a future landing zone for online
   LinUCB update logs, closing the loop between bandit decisions and observable outcomes
+
+## Amendment (2026-11-11)
+
+- The paid Render host this decision mentions was retired (ADR-004). The layer remains in the code as an optional local feature; the public demo no longer writes to it.

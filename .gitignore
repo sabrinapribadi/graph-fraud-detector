@@ -96,3 +96,6 @@ wheels/
 
 # Render
 .render/
+
+# share preview for link cards (portfolio rule R18)
+!docs/assets/preview.png

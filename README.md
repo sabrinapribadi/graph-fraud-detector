@@ -9,7 +9,6 @@ designed so non-finance users can interpret every result in plain English.
 
 [![Dashboard](https://img.shields.io/badge/Live_Dashboard-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://graph-fraud-detector.streamlit.app)
 [![API Demo](https://img.shields.io/badge/API_Demo-GitHub_Pages-238636?style=for-the-badge&logo=github)](https://sabrinapribadi.github.io/graph-fraud-detector/)
-[![API](https://img.shields.io/badge/API_Docs-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://graph-fraud-detector-api-service.onrender.com/docs)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 
@@ -18,8 +17,8 @@ designed so non-finance users can interpret every result in plain English.
 | Service | URL | Notes |
 |---------|-----|-------|
 | **15-Tab Dashboard** | [graph-fraud-detector.streamlit.app](https://graph-fraud-detector.streamlit.app) | Streamlit Community Cloud — 1 GB RAM, free |
-| **Interactive API Demo** | [sabrinapribadi.github.io/graph-fraud-detector](https://sabrinapribadi.github.io/graph-fraud-detector/) | GitHub Pages — showcases all 11 FastAPI endpoints |
-| **API Swagger Docs** | [graph-fraud-detector-api-service.onrender.com/docs](https://graph-fraud-detector-api-service.onrender.com/docs) | Try endpoints live in browser |
+| **Static demo** | [sabrinapribadi.github.io/graph-fraud-detector](https://sabrinapribadi.github.io/graph-fraud-detector/) | GitHub Pages: measured quality, real held-out examples, no server ($0) |
+| **API (11 endpoints)** | [Run the API locally](#run-the-api-locally) | FastAPI with Swagger docs at `/docs`; no paid host |
 | **GitHub Repository** | [github.com/sabrinapribadi/graph-fraud-detector](https://github.com/sabrinapribadi/graph-fraud-detector) | Full source code |
 
 ## Features
@@ -64,19 +63,28 @@ Phase 6 tabs additionally show an amber **Plain English** callout after results 
 from $X to $Y."*). All technical sliders (PD, LGD, rho, diffusion steps) include `help=`
 tooltip explanations.
 
-## Model Performance
+## Model Performance (measured, ADR-004)
 
-| Metric | Value |
-|--------|-------|
-| **AUC** | 0.955 |
-| **F1 Score** | 0.898 |
-| **Accuracy** | 89.0% |
-| **Precision** | 90.6% |
-| **Recall** | 89.0% |
-| **Total Nodes** | 203,769 |
-| **Total Edges** | 234,355 |
-| **Illicit Nodes** | 42,019 |
-| **Licit Nodes** | 4,545 |
+**Label fix (November 2026):** the loader mapped Elliptic class "1" to licit and "2" to illicit; the dataset defines the opposite (Weber et al. 2019). Earlier models and figures described licit transactions as fraud. Fixed and tested; every number below is produced by `scripts/evaluate_models.py` (`data/eval_results.json`).
+
+**On the dataset authors' protocol** (train on time steps 1–34, test on 35–49; random forest, 50 trees):
+
+| Measure | Ours | Published (Weber et al. 2019) | What it means |
+|---|---|---|---|
+| Illicit F1 | **0.815** | 0.788 | Balance of the two below; 1.0 is perfect. Within the pre-set ±0.05: the labels and pipeline are right |
+| Precision | 93.2% | 95.6% | Of transactions flagged, the share truly illicit |
+| Recall | 72.4% | 67.0% | Of illicit transactions, the share flagged |
+| F1 before / after step 43 | 0.90 / 0.03 | collapse reported | A dark market closed at step 43; every model fails on the new behaviour |
+
+**The dashboard's GraphSAGE** (balanced 3,000-node sample, random split): AUC 0.956, illicit F1 0.877. Half its test nodes are illicit (vs about 10% in reality), which flatters it; it is not comparable with the table above.
+
+| Dataset | Count |
+|---|---|
+| Transactions (nodes) | 203,769 |
+| Payment links (edges) | 234,355 |
+| Illicit (class "1") | 4,545 |
+| Licit (class "2") | 42,019 |
+| Unknown | 157,205 |
 
 ## Project Structure
 
@@ -134,7 +142,6 @@ graph-fraud-detector/
 ├── Dockerfile                       # Dashboard container (port 8501)
 ├── Dockerfile.api                   # API container (port 8000)
 ├── runtime.txt                      # Python 3.12 pin for Streamlit Community Cloud
-├── render.yaml                      # Render deployment config (API service)
 ├── pyproject.toml                   # Poetry dependencies
 └── PRD.md                           # Full product requirements document
 ```
@@ -226,7 +233,18 @@ docker build -f Dockerfile.api -t fraud-detector-api .
 docker run -p 8000:8000 fraud-detector-api
 ```
 
-## REST API
+## Run the API locally
+
+The API no longer runs on a paid host. Run it locally or in Docker:
+
+```bash
+python scripts/precompute_api_cache.py          # model weights + cache (data/)
+uvicorn src.api.app:app --port 8000              # Swagger docs at http://localhost:8000/docs
+```
+
+The public demo page reads precomputed JSON instead (`python scripts/build_static_demo.py`).
+
+### Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -248,8 +266,8 @@ Example:
 import requests
 
 response = requests.post(
-    "https://graph-fraud-detector-api-service.onrender.com/predict",
-    json={"node_id": "5530458", "features": [0.0] * 166}
+    "http://localhost:8000/predict",
+    json={"node_id": "5530458", "features": features_166}   # the node's 166 Elliptic features
 )
 print(response.json())
 ```
@@ -271,13 +289,13 @@ print(response.json())
 | Data Storage (files) | Parquet (pyarrow, zstd) — 690 MB CSV → 87 MB committed |
 | Data Storage (bronze) | MongoDB Atlas M0 Free — raw fraud alert events (pymongo) |
 | Data Storage (gold) | Supabase PostgreSQL — daily aggregated analytics (psycopg2) |
-| Deployment | Docker, Render (API), GitHub Pages (demo) |
+| Deployment | Streamlit Community Cloud (dashboard), GitHub Pages (static demo), Docker (local API); no paid hosting |
 | Language | Python 3.12 |
 
 ## Key Dataset Facts
 
 - **Total transactions:** 203,769
-- **Fraud rate (labeled):** 90.2% of labeled nodes are illicit
+- **Illicit share (labelled):** 9.8% of labelled transactions are illicit (4,545 of 46,564)
 - **Network structure:** Sparse directed graph, avg degree 2.3, 49 connected components
 - **Top hub node:** Node 2984918 with degree 473
 - **High-velocity nodes:** 13,752 nodes above the 90th percentile degree threshold
@@ -285,4 +303,4 @@ print(response.json())
 
 ## Data Source
 
-[Elliptic Bitcoin Dataset — Kaggle](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set)
+[Elliptic Bitcoin Dataset — Kaggle](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set) · Weber, M., Domeniconi, G., et al. (2019). Anti-Money Laundering in Bitcoin: Experimenting with Graph Convolutional Networks for Financial Forensics. KDD '19 Workshop on Anomaly Detection in Finance. arXiv 1908.02591.
