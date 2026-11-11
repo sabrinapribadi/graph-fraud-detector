@@ -1,0 +1,19 @@
+# Every paper or book cited in an ADR (rule R2). `python scripts/evidence.py` fetches venue, type and citations
+# from OpenAlex and writes data/outputs/references_evidence.json plus a table per ADR.
+- key: li_2010_linucb
+  doi: 10.1145/1772690.1772758
+  used_in: [ADR-001]
+  role: LinUCB contextual bandit
+- key: lattimore_2020
+  doi: 10.1017/9781108571401
+  kind: book
+  venue: "Cambridge University Press (book)"
+  used_in: [ADR-001]
+  role: bandit theory (chapter 19, LinUCB)
+- key: weber_2019
+  doi: 10.48550/arXiv.1908.02591
+  arxiv: "1908.02591"
+  venue: "KDD 2019 Workshop on Anomaly Detection in Finance (arXiv 1908.02591)"
+  peer_reviewed: true
+  used_in: [ADR-001, ADR-004]
+  role: Elliptic dataset, time split and published results
