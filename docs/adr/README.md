@@ -10,6 +10,7 @@ Major design decisions for graph-fraud-detector are documented here.
 | [ADR-001](ADR-001-rl-threshold-bandit.md) | RL: LinUCB contextual bandit for adaptive fraud detection threshold selection | Accepted |
 | [ADR-002](ADR-002-mongodb-alert-layer.md) | Persistence: MongoDB Atlas M0 Free for fraud alert logging (bronze layer) | Accepted |
 | [ADR-003](ADR-003-postgresql-gold-layer.md) | Analytics: PostgreSQL (Supabase) gold layer for aggregated fraud metrics | Accepted |
+| [ADR-004](ADR-004-label-fix-and-evaluation.md) | Label fix (Elliptic class 1 = illicit) and a pre-registered evaluation: random forest on the paper's temporal split; live API host retired | Accepted |
 
 ## Decision Dependency Graph
 
@@ -28,4 +29,3 @@ ADR-003 (PostgreSQL gold layer)
     └── provides /stats/daily endpoint for time-series reporting
     └── ready to log ADR-001 bandit decisions for longitudinal evaluation
 ```
-| [ADR-004](ADR-004-label-fix-and-evaluation.md) | Label fix and pre-registered evaluation | Accepted | Elliptic class 1 = illicit; random-forest check on the paper's temporal split (illicit F1 0.788 ± 0.05); app GraphSAGE reported with caveat; live API host retired. |
