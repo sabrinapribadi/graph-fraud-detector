@@ -34,7 +34,7 @@
 
 ### 3. The app's GraphSAGE, as built
 
-- Exactly the dashboard's configuration (2,000-node class-balanced sample, its own random split, seed 42, 50 epochs), with the fixed labels.
+- Exactly the dashboard's configuration (`src/ui/dashboard.py`: hidden size 64, 2 layers, dropout 0.3, learning rate 0.001, 3,000-node class-balanced sample, its own random split with seed 42, 100 epochs with early stopping after 20), with the fixed labels.
 - **Reported, not gated:** AUC and illicit precision, recall and F1 on its test set.
 - **Caveat stated wherever shown:** a balanced sample with a random split flatters a model; it is not comparable with the temporal benchmark.
 - The app's dense adjacency matrix cannot score all 46,564 labelled transactions on an 8 GB laptop (≈ 8 GB matrix), so the temporal protocol is applied to the random forest only.
@@ -54,6 +54,10 @@
 
 - README, knowledge-base text, dashboard fallbacks and the static API demo use only the measured numbers, each with a one-line meaning (R17).
 - The live API host is retired; the demo page reads precomputed responses from GitHub Pages (no server cost).
+
+## Correction before any run (2026-11-11)
+
+- §3 first named the API cache's setup (2,000 nodes, 50 epochs). The dashboard, which shows the headline numbers, uses the setup now stated in §3. Corrected and pushed before any model was retrained.
 
 ## Considered Options
 
