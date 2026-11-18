@@ -2,6 +2,14 @@
 
 Newest first. Each entry uses STAR (Situation, Task, Action, Result) so it can be told as a story.
 
+## [9.4.0] — 2026-11-18 — App template v2: nine pages, the 5W1H brief, no owner key
+**Files:** src/ui/dashboard.py, src/ui/frame.py (new, shared), src/agent/fraud_agent.py, src/analytics/loss_forecasting.py, tests/test_streamlit_app.py, README.md
+- **Situation:** The user wanted every Streamlit app to combine the older dashboards' structure (sidebar pages: a real use case, EDA, an AI assistant; a business question on every view) with the newer apps' 5W1H brief and KPI first screen.
+- **Task:** Rebuild this app on one shared template (R26 item 8) and check every page against the data before release.
+- **Action:** The fifteen tabs became nine sidebar pages (related analyses grouped) on the shared `frame.py`, with the brief and KPI strip on the overview; the app drops any `OPENAI_API_KEY` at start; the chat is free by default (answers straight from the tools) with the viewer's own key for the LLM agent, capped at 10.
+- **Result:** 5 app tests pass (AppTest in CI on the full requirements). Checking the pages corrected invented calendar dates (the dataset publishes none), a 'semantic search' claim (it is TF-IDF), a promise of LLM summaries the app cannot make, and a temporal answer that did not answer its question.
+- **Talking point:** "Every portfolio app now reads the same way: what it is for, the data, the use case, then an assistant; and every page answers a business question from the data."
+
 ## [9.3.0] — 2026-11-11 — Results page, technical walkthrough and threshold what-if (R3, R9, R14, R19)
 **Files:** docs/index.html (new results page), docs/demo.html (the former page), docs/build.html (new), docs/assets/preview*.png, tests/browser/ (new), scripts/evaluate_models.py, data/eval_results.json, docs/adr/ADR-004, docs/brief.yaml, README.md, .github/workflows/ci.yml
 - **Situation:** The live page was a demo without the problem, the data, the decisions or the failures.

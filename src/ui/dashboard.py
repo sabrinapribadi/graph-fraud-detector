@@ -1,4 +1,5 @@
 import os
+os.environ.pop("OPENAI_API_KEY", None)   # R26: never the owner's key; a viewer's own key is passed explicitly
 os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
 os.environ['PYTORCH_MPS_LOW_WATERMARK_RATIO'] = '0.5'
 import sys
@@ -250,6 +251,16 @@ def _dot(color: str) -> str:
     )
 
 
+LIVE_LIMIT = 10   # live questions per session with a viewer's own key (R26)
+
+
+def _redact(text: str, key: str | None) -> str:
+    """Never echo a viewer's key, in full or in part, in an error."""
+    if key:
+        text = text.replace(key, "[your key]")
+    return re.sub(r"sk-[A-Za-z0-9_\-\*]{4,}", "[key]", text)
+
+
 def _biz_box(question: str, answer: str) -> None:
     st.markdown(
         f'<div class="business-box">'
@@ -491,22 +502,34 @@ if st.session_state["data_loaded"] and not st.session_state["model_trained"]:
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
-with st.sidebar:
-    st.markdown("""
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 3L4 9v9c0 8.25 5.96 15.97 14 18 8.04-2.03 14-9.75 14-18V9L18 3z"
-                  fill="#4A90D9" fill-opacity="0.85"/>
-            <path d="M15 17.5l2.5 2.5 5-5" stroke="white" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div>
-            <div style="font-size:1.05rem;font-weight:700;color:#e8e8e8;line-height:1.1;">Graph Fraud</div>
-            <div style="font-size:0.72rem;color:#888;">Detector v2.0</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import frame as F  # noqa: E402  shared app frame (identical in every portfolio app)
 
+REPO_URL = "https://github.com/sabrinapribadi/graph-fraud-detector"
+RESULTS_URL = "https://sabrinapribadi.github.io/graph-fraud-detector/"
+F.setup(st, accent="#4A90D9")
+PAGES = [
+    F.Page("overview", "Overview", ":material/home:", "The results, the brief and where to start."),
+    F.Page("explore", "Explore the data", ":material/query_stats:",
+           "The transaction graph: labels, what the model predicts, a filterable table of transactions and activity over the 49 time steps."),
+    F.Page("network", "Network explorer", ":material/hub:",
+           "Sample up to 2,000 transactions and see who pays whom, coloured by label, degree or the model's fraud score."),
+    F.Page("discovery", "Pattern discovery", ":material/search:",
+           "Five automated detectors: laundering rings, structuring, rapid chains, mixed-signal nodes and degree outliers."),
+    F.Page("models", "Models and explanations", ":material/psychology:",
+           "Hyperparameter search, a GAT and GraphSAGE ensemble, and which features drive one transaction's score."),
+    F.Page("risk", "Loss and capital", ":material/shield:",
+           "Monte Carlo loss, a loss forecast and Basel III capital, from the model's measured quality and inputs you set."),
+    F.Page("stress", "Stress and contagion", ":material/crisis_alert:",
+           "Five named crisis scenarios side by side, and how far a missed fraud can spread through the graph (SIR)."),
+    F.Page("strategy", "Strategy and threshold", ":material/tune:",
+           "The detector as a strategy over time (Sharpe, Sortino and more) and a bandit that picks the alert threshold."),
+    F.Page("agent", "AI Assistant", ":material/smart_toy:",
+           "Ask in plain words: free answers straight from the analysis tools, or a language-model agent with your own OpenAI key; plus document search."),
+]
+page = F.navigate(st, PAGES, brand="Graph fraud detector", tagline="Bitcoin transactions, ranked and explained", icon="⛨")
+
+with st.sidebar:
     _data_ok  = st.session_state["data_loaded"]
     _model_ok = st.session_state["model_trained"]
     st.markdown(
@@ -547,54 +570,32 @@ with st.sidebar:
         )
         st.progress(_val)
 
-    with st.expander("Navigation Guide"):
-        st.markdown("""
-| Tab | Purpose |
-|-----|---------|
-| Overview | KPIs & distributions |
-| Network | Graph explorer |
-| AI Chat | Natural language Q&A |
-| Risk | Monte Carlo loss |
-| Data | Filter & export |
-| Discovery | Auto-pattern detection |
-| ML Models | Hyperparams & XAI |
-| Temporal | Time-series analysis |
-| Knowledge | RAG search |
-| Stress Test | Crisis scenarios |
-| Performance | Risk-adjusted metrics |
-| Forecast | Loss projection |
-| Capital | Basel III capital |
-| Contagion | SIR diffusion |
-""")
+F.sidebar_footer(st, {"Results page": RESULTS_URL, "Walkthrough": RESULTS_URL + "build.html", "Transaction demo": RESULTS_URL + "demo.html",
+                      "Source": REPO_URL},
+                 "Data: the Elliptic Bitcoin dataset (Weber et al. 2019): 203,769 transactions, 4,545 labelled illicit, 42,019 licit.")
 
 
 # ── Tab Layout ─────────────────────────────────────────────────────────────────
 
-(tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9,
- tab10, tab11, tab12, tab13, tab14, tab15) = st.tabs([
-    ":material/dashboard: Overview",
-    ":material/hub: Network",
-    ":material/smart_toy: AI Chat",
-    ":material/shield: Risk",
-    ":material/table_view: Data",
-    ":material/search: Discovery",
-    ":material/psychology: ML Models",
-    ":material/schedule: Temporal",
-    ":material/library_books: Knowledge",
-    ":material/crisis_alert: Stress Test",
-    ":material/analytics: Performance",
-    ":material/trending_up: Forecast",
-    ":material/account_balance: Capital",
-    ":material/coronavirus: Contagion",
-    ":material/tune: RL Threshold",
-])
+if page.key == "overview":                       # R22, R26 item 7: results and the brief on the first screen
+    F.hero(st, f"Elliptic Bitcoin dataset · {NODES:,} transactions · 49 time steps", "Graph fraud detector",
+           "Which Bitcoin transactions look illicit, ranked and explained for investigators, and what missed fraud would cost.")
+    F.kpis(st, [("Illicit F1, later time steps", f"{M['rf_f1']:.3f}", f"random forest · published {M['paper_f1']:.3f}"),
+                ("Illicit found", f"{M['rf_recall']:.0%}", f"precision {M['rf_precision']:.0%}"),
+                ("GraphSAGE AUC", f"{M['gs_auc']:.3f}", "balanced sample"),
+                ("After the shutdown", f"F1 {M['rf_f1_after']:.3f}", f"before: {M['rf_f1_before']:.3f} · time step 43")])
+    F.brief(st, F.load_brief(project_root, REPO_URL))
+    F.links_line(st, {"Results page": RESULTS_URL, "Technical walkthrough": RESULTS_URL + "build.html", "Source": REPO_URL})
+    F.use_cards(st, PAGES)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 — OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab1:
+if page.key == "explore":
+    F.header(st, PAGES[1], "What does the transaction graph look like, and how rare is fraud?",
+             f"{NODES:,} transactions over 49 time steps about two weeks apart; only {ILLICIT + 42019:,} are labelled, and **{ILLICIT:,} of them illicit ({M['illicit_share']:.1%})**. Most transactions are unlabelled, so the model learns from a small, imbalanced set.")
     st.markdown(
         '<div class="context-box">Graph-level overview of the Elliptic Bitcoin dataset: '
         '203,769 nodes, 234,355 edges, 166 features across 49 bi-weekly time steps. '
@@ -799,7 +800,9 @@ with tab1:
 # TAB 2 — NETWORK EXPLORER
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab2:
+if page.key == "network":
+    F.header(st, PAGES[2], "Who does a suspicious transaction pay, and who pays it?",
+             f"Sample a neighbourhood and follow the flows, coloured by label or the model's score. The graph model learns from these neighbours: GraphSAGE reaches AUC {M['gs_auc']:.3f} on a balanced sample.")
     st.markdown(
         '<div class="context-box">Interactive subgraph explorer. Sample up to 2,000 nodes, colour by '
         'label, degree, fraud probability, or AI-predicted label. Topology statistics computed via NetworkX.</div>',
@@ -961,29 +964,21 @@ with tab2:
 # TAB 3 — AI CHAT
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab3:
-    st.markdown(
-        '<div class="context-box">LangChain-powered conversational agent with 9 analytical tools '
-        'over the live graph. Falls back to direct tool calls when no OpenAI key is configured.</div>',
-        unsafe_allow_html=True,
-    )
-
-    _biz_box(
-        "I don't want to read charts — can I just ask questions in plain English?",
-        "Yes. Type any question about fraud patterns, network statistics, top suspects, or risk analysis. "
-        "The AI agent will call the appropriate analytical tool and summarise the result in natural language.",
-    )
-
-    st.markdown("""
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-        <span style="background:#1a2a3a;border:1px solid #4A90D9;padding:3px 10px;border-radius:12px;
-              font-size:0.78rem;color:#4A90D9;">&#9889; LangChain Agent</span>
-        <span style="background:#1a2a3a;border:1px solid #FFA726;padding:3px 10px;border-radius:12px;
-              font-size:0.78rem;color:#FFA726;">&#128296; 9 Analytical Tools</span>
-        <span style="background:#1a2a3a;border:1px solid #00CC96;padding:3px 10px;border-radius:12px;
-              font-size:0.78rem;color:#00CC96;">&#128218; RAG &#x2192; Knowledge tab</span>
-    </div>
-    """, unsafe_allow_html=True)
+if page.key == "agent":
+    F.header(st, PAGES[8], "Can an investigator ask in plain words?",
+             "Yes. With no key, each question goes straight to the matching analysis tool (free, no language model). With your own OpenAI key, a LangChain agent picks among 9 tools and writes the answer: 10 questions per session, and the key is never stored. Document search below works without a key.")
+    _mode3 = st.radio("Mode", ["Free: answers straight from the analysis tools", "Live: use your own OpenAI key"], horizontal=True,
+                      key="chat_mode")
+    _key3 = None
+    if _mode3.startswith("Live"):
+        _key3 = st.text_input("Your OpenAI API key", type="password", key="byo_key",
+                              help="Held in this browser session only: never stored, logged or shown. The app never holds a key of ours.") or None
+        _used3 = st.session_state.get("byo_used", 0)
+        st.caption(f"Live answers by gpt-4o-mini with 9 tools over the live graph; {LIVE_LIMIT - _used3} of {LIVE_LIMIT} questions left this session.")
+        if not _key3:
+            st.info("Paste your own OpenAI key to ask the agent live, or switch to Free mode.")
+    else:
+        st.caption("Free mode: each question is routed to the matching analysis tool and its result is shown as is; no language model runs.")
 
     _quick_labels3 = [
         "Fraud statistics", "Top 10 suspects", "Network structure",
@@ -1020,21 +1015,26 @@ with tab3:
         if _G3 is not None and _det3 is not None and _md3 is not None:
             # Cache agent across reruns — only rebuild if model changes
             from src.agent.fraud_agent import FraudAgent
-            if ("_fraud_agent" not in st.session_state
-                    or st.session_state.get("_fraud_agent_det") is not _det3):
-                st.session_state["_fraud_agent"] = FraudAgent(_G3, _det3, _md3)
-                st.session_state["_fraud_agent_det"] = _det3
+            _sig3 = (id(_det3), hash(_key3) if _key3 else None)        # rebuild when the model or the viewer's key changes
+            if st.session_state.get("_fraud_agent_sig") != _sig3:
+                st.session_state["_fraud_agent"] = FraudAgent(_G3, _det3, _md3, api_key=_key3 or "")   # "" = free mode, never the env key
+                st.session_state["_fraud_agent_sig"] = _sig3
             _agent3 = st.session_state["_fraud_agent"]
 
             # Support multiple questions separated by ";" or ","
             _sub_questions3 = [q.strip() for q in re.split(r"[;,]\s*", _question3) if q.strip()]
             for _sq3 in _sub_questions3:
+                if _key3 and st.session_state.get("byo_used", 0) >= LIVE_LIMIT:
+                    st.warning(f"The live limit of {LIVE_LIMIT} questions per session is reached; switch to Free mode.")
+                    break
                 with st.chat_message("assistant"):
                     with st.spinner(f"Analysing: {_sq3[:60]}..."):
                         try:
                             _response3 = _agent3.ask(_sq3)
                         except Exception as _e3:
-                            _response3 = f"Agent error: {_e3}"
+                            _response3 = "Agent error: " + _redact(str(_e3), _key3)
+                        if _key3:
+                            st.session_state["byo_used"] = st.session_state.get("byo_used", 0) + 1
                         _render_agent_response(_response3)
                         st.session_state["chat_history"].append(
                             {"role": "assistant", "content": _response3}
@@ -1052,7 +1052,9 @@ with tab3:
 # TAB 4 — RISK ANALYSIS
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab4:
+if page.key == "risk":
+    F.header(st, PAGES[5], "How much could missed fraud cost, and how much capital would cover it?",
+             f"Illustrative only: the Elliptic features are anonymised, so amounts come from inputs you set, combined with the model's measured recall ({M['gs_recall']:.0%} on a balanced sample). The Monte Carlo, the loss forecast and Basel III capital start from those inputs.")
     st.markdown(
         '<div class="context-box">Monte Carlo simulation over 10,000 scenarios. Combines binomial '
         'fraud-count sampling with Gaussian loss variation. Outputs Expected Loss, VaR 95%, '
@@ -1133,7 +1135,7 @@ with tab4:
 # TAB 5 — DATA EXPLORER
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab5:
+if page.key == "explore":
     st.markdown(
         '<div class="context-box">Filterable node-level data table. Filter by ground-truth label and '
         'degree range. Export the filtered subset as CSV for offline investigation.</div>',
@@ -1199,7 +1201,9 @@ with tab5:
 # TAB 6 — AUTO-DISCOVERY
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab6:
+if page.key == "discovery":
+    F.header(st, PAGES[3], "Which suspicious patterns should an investigator look at first?",
+             "Five detectors run over the whole graph with no query to write: laundering rings, structuring, rapid transaction chains, mixed-signal nodes and degree outliers. Each lists the transactions it flags, highest-scoring first.")
     st.markdown(
         '<div class="context-box">Runs 5 automated fraud-pattern detectors: money-laundering rings, '
         'structuring patterns, rapid transaction chains, mixed-signal nodes, and degree outliers — '
@@ -1296,7 +1300,9 @@ with tab6:
 # TAB 7 — ADVANCED ML
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab7:
+if page.key == "models":
+    F.header(st, PAGES[4], "Which model should flag transactions, and can we trust it on new time steps?",
+             f"A random forest on the 166 features reaches illicit F1 {M['rf_f1']:.3f} on later time steps (published {M['paper_f1']:.3f}). But after the dark-market shutdown at time step 43 every model collapses (F1 {M['rf_f1_before']:.3f} before, {M['rf_f1_after']:.3f} after): retrain when the market changes.")
     st.markdown(
         '<div class="context-box">Hyperparameter optimisation via Optuna (TPE, 8 trials), ensemble '
         'training (GAT + GraphSAGE), and gradient-based feature importance for individual node explainability.</div>',
@@ -1373,7 +1379,7 @@ with tab7:
                 '<div class="context-box" style="margin-top:8px;font-size:0.82rem;">'
                 '<strong>Where are these parameters used?</strong> Clicking '
                 '"Apply Optimised Parameters" retrains the GNN model with these settings '
-                'and replaces the active model in memory. All tabs — Network Explorer, '
+                'and replaces the active model in memory. All pages — Network explorer, '
                 'AI Chat, Risk Analysis, Explainability, Forecast, Contagion — will then '
                 'use the retrained model. The default baseline uses '
                 'hidden_dim=64, num_layers=2, dropout=0.3.</div>',
@@ -1527,7 +1533,7 @@ In practice, training both and comparing AUC tells you which signal structure yo
 # TAB 8 — TEMPORAL ANALYSIS
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab8:
+if page.key == "explore":
     st.markdown(
         '<div class="context-box">Temporal activity analysis using degree as a proxy for time-step '
         'activity. Computes velocity percentiles, z-score anomalies, and class distribution.</div>',
@@ -1662,9 +1668,9 @@ with tab8:
 
     _biz_box(
         "Is fraud getting worse over time?",
-        "Temporal analysis bins nodes by transaction velocity (degree) as a proxy for time-step activity. "
-        "High-velocity nodes flagged above the 90th percentile — and especially those with illicit labels — "
-        "represent operations that have grown over the dataset's 49 bi-weekly time steps (Jan 2011 – Jan 2013).",
+        "This view cannot say: it uses degree (how many links a transaction has) as a proxy for activity, not the time step. "
+        "It shows which transactions are unusually busy; how detection changes over the 49 time steps, including the collapse "
+        "after the dark-market shutdown at step 43, is on the Strategy and threshold page.",
     )
 
 
@@ -1672,19 +1678,18 @@ with tab8:
 # TAB 9 — KNOWLEDGE BASE (RAG)
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab9:
+if page.key == "agent":
     st.markdown(
-        '<div class="context-box">Retrieval-Augmented Generation over 25 curated documents covering '
-        'fraud patterns, GNN architecture, risk formulas, and the Elliptic dataset. Uses TF-IDF '
-        '(or ChromaDB + OpenAI when available).</div>',
+        '<div class="context-box">Document search over 25 curated documents covering fraud patterns, GNN architecture, '
+        'risk formulas and the Elliptic dataset, ranked by keyword match (TF-IDF). Free: no language model runs here.</div>',
         unsafe_allow_html=True,
     )
 
     _biz_box(
         "Can I look up a fraud term or research topic?",
         "Yes — type a question or click a preset button to search the knowledge base. "
-        "Documents are ranked by semantic similarity. With an OpenAI API key, the system "
-        "synthesises a grounded answer from the top matching documents.",
+        "Documents are ranked by keyword match (TF-IDF), and the best passages are shown as they are written; "
+        "the app holds no key, so it does not write a summary.",
     )
 
     _rag_presets9 = [
@@ -1786,7 +1791,9 @@ with tab9:
 # TAB 10 — STRESS TEST
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab10:
+if page.key == "stress":
+    F.header(st, PAGES[6], "What happens to losses in a crisis, and how far can a missed fraud spread?",
+             "Five named scenarios (Baseline, 2008 Crisis, COVID-19, Crypto Winter, Regulatory Crackdown) rescale the risk inputs, and an SIR simulation counts how many more transactions a missed fraud puts at risk. The scenario multipliers are assumptions, not estimates from this data.")
     st.markdown(
         '<div class="context-box">Applies 5 named macroeconomic crisis scenarios (Baseline, 2008 Crisis, '
         'COVID-19, Crypto Winter, Regulatory Crackdown) to base risk parameters and compares Monte Carlo '
@@ -1956,7 +1963,9 @@ with tab10:
 # TAB 11 — PERFORMANCE (Risk-Adjusted Metrics)
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab11:
+if page.key == "strategy":
+    F.header(st, PAGES[7], "Is the detector steady over time, and which alert threshold should we use?",
+             f"Not steady: detection collapses after the dark-market shutdown at time step 43 (F1 {M['rf_f1_before']:.3f} before, {M['rf_f1_after']:.3f} after). Below, the detection rate is treated as a return series, and a bandit picks the alert threshold time step by time step.")
     st.markdown(
         '<div class="context-box">Treats the fraud detector as a financial strategy: Sharpe, Sortino, '
         'Information Ratio, and Calmar ratio computed over bootstrapped TPR series across the 49 '
@@ -2280,10 +2289,10 @@ with tab11:
 # TAB 12 — FORECAST
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab12:
+if page.key == "risk":
     st.markdown(
         '<div class="context-box">Projects future fraud loss using Prophet (or Holt-Winters fallback). '
-        'Time series constructed from 49 bi-weekly Elliptic snapshots (Jan 2011 – Jan 2013), '
+        'Time series built from the 49 Elliptic time steps, about two weeks apart (the dataset publishes no dates; the axis uses placeholder dates from 2011), '
         'then extended forward.</div>',
         unsafe_allow_html=True,
     )
@@ -2359,7 +2368,7 @@ with tab12:
             _fcf12.update_layout(**_dark_layout(
                 height=380,
                 xaxis=dict(
-                    title="Bi-weekly snapshot (Jan 2011 → Jan 2013 = 49 steps recorded in the Elliptic dataset)",
+                    title="Time step, about two weeks apart (placeholder dates; the dataset publishes none)",
                     color="#888",
                 ),
                 yaxis=dict(title="Estimated Fraud Loss (USD)", color="#888"),
@@ -2399,7 +2408,7 @@ with tab12:
 # TAB 13 — CAPITAL (Regulatory Capital)
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab13:
+if page.key == "risk":
     st.markdown(
         '<div class="context-box">Basel III regulatory capital calculations under both Standardised '
         'Approach (SA) and Internal Ratings-Based (IRB/Vasicek) approaches. Sensitivity analysis '
@@ -2556,7 +2565,7 @@ with tab13:
 # TAB 14 — CONTAGION
 # ══════════════════════════════════════════════════════════════════════════════
 
-with tab14:
+if page.key == "stress":
     st.markdown(
         '<div class="context-box">Stochastic SIR (Susceptible-Infected-Recovered) diffusion simulation. '
         'Quantifies how many additional nodes are put at risk if a fraudulent node is missed — '
@@ -2707,7 +2716,7 @@ _ARM_COLORS_RL = {
     "τ=0.8": "#9C27B0",
 }
 
-with tab15:
+if page.key == "strategy":
     st.markdown("## RL Threshold Selector")
     st.markdown(
         "A **LinUCB contextual bandit** learns which fraud-probability threshold "

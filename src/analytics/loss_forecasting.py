@@ -116,7 +116,7 @@ class LossForecaster:
         buckets = pd.qcut(degrees, q=self.N_STEPS, labels=False, duplicates="drop")
         n_actual = buckets.nunique() if hasattr(buckets, "nunique") else self.N_STEPS
 
-        # Elliptic dataset: 49 time steps ≈ bi-weekly snapshots, Jan 2011 – Jan 2013
+        # Elliptic: 49 time steps about two weeks apart; the dataset publishes no dates, so 2011-01-01 is a placeholder origin
         _STEP_ORIGIN = pd.Timestamp("2011-01-01")
         _STEP_FREQ   = pd.Timedelta(weeks=2)
 

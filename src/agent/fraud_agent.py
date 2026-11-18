@@ -1,6 +1,8 @@
 """
 LLM Agent for Natural Language Fraud Analysis
 """
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -89,7 +91,7 @@ class FraudAgent:
     """
     LLM-powered agent for fraud detection
     """
-    def __init__(self, G: nx.DiGraph, detector: FraudDetector, data: Dict[str, Any]):
+    def __init__(self, G: nx.DiGraph, detector: FraudDetector, data: Dict[str, Any], api_key: str | None = None):
         self.G = G
         self.detector = detector
         self.data = data
@@ -97,7 +99,7 @@ class FraudAgent:
         self.tools = []
         self.conversation_history: List = []  # accumulated HumanMessage/AIMessage for LLM path
 
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY") if api_key is None else api_key   # the app passes the viewer's key ("" = free mode)
         if not api_key or api_key == "sk-your-actual-key-here" or api_key == "sk-your-actual-key-here...":
             print("WARNING: Valid OPENAI_API_KEY not found in environment variables.")
             print("Running in fallback mode - will return direct tool responses.")

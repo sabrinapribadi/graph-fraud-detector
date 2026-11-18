@@ -33,49 +33,53 @@
 
 | Service | What it serves | Free-tier limits (R20) |
 |---|---|---|
-| [15-tab dashboard](https://graph-fraud-detector.streamlit.app) | Models, risk analytics, AI assistant | Streamlit Community Cloud: sleeps after 12 hours without traffic; any visitor can wake it; up to 2.7 GB memory |
+| [Dashboard, 9 pages](https://graph-fraud-detector.streamlit.app) | Models, risk analytics, AI assistant | Streamlit Community Cloud: sleeps after 12 hours without traffic; any visitor can wake it; up to 2.7 GB memory |
 | [Results page](https://sabrinapribadi.github.io/graph-fraud-detector/) and [walkthrough](https://sabrinapribadi.github.io/graph-fraud-detector/build.html) | Measured quality, a threshold what-if, every phase | GitHub Pages, no server: the fallback while the dashboard sleeps |
 | [Transaction demo](https://sabrinapribadi.github.io/graph-fraud-detector/demo.html) | Real held-out transactions with their scores | GitHub Pages, no server |
 | [API (11 endpoints)](#run-the-api-locally) | FastAPI with docs at `/docs` | Runs locally; no paid host |
 
 ## Features
 
-### Core Dashboard (Tabs 1–9)
+### Dashboard pages
 
-| Dashboard Tab | Business Question | What it does |
+Built on the portfolio's app template (rule R26 item 8): a sidebar with one button per page (each page linkable as `?page=`), at-a-glance stats and links; every page opens with the business question it answers, with the answer computed from the data. The 15 analyses below are grouped into 9 pages: Overview; Explore the data (overview charts, data table, temporal); Network explorer; Pattern discovery; Models and explanations; Loss and capital (risk, forecast, capital); Stress and contagion; Strategy and threshold (risk-adjusted metrics, RL threshold); AI Assistant (chat and knowledge base).
+
+### Core analyses
+
+| Analysis | Business Question | What it does |
 |--------------|-------------------|-------------|
 | **Overview** | Are we catching the fraudsters? | AUC, fraud rate, dual donut (ground-truth labels + model-predicted classification for all 203k nodes), degree histogram, fraud probability histogram, top suspicious nodes table |
 | **Network Explorer** | Who are the most connected suspects? | Interactive Plotly graph; colour by label, degree, fraud probability, or **AI-Predicted Label** (model inference on subgraph with caution callout); network topology stats |
-| **AI Assistant** | Can I just ask questions in plain English? | LangChain agent with **9 analytical tools** (fraud stats, suspicious nodes, network analysis, transaction prediction, risk analysis, anomaly detection, temporal trends, loss forecast, feature explanation); multi-turn conversation history in LLM mode; follow-up suggestions after every response; native `st.chat_message()` bubbles; Plotly bar charts for statistics/suspect results; agent cached across messages; multiple questions via semicolons |
+| **AI Assistant** | Can I just ask questions in plain English? | Free by default: each question goes straight to the matching analysis tool (no language model). With the viewer's own OpenAI key (session only, 10 questions): a LangChain agent with **9 analytical tools** (fraud stats, suspicious nodes, network analysis, transaction prediction, risk analysis, anomaly detection, temporal trends, loss forecast, feature explanation); multi-turn conversation history in LLM mode; follow-up suggestions after every response; native `st.chat_message()` bubbles; Plotly bar charts for statistics/suspect results; agent cached across messages; multiple questions via semicolons |
 | **Risk Analysis** | How much money could we lose? | Monte Carlo (10,000 scenarios); Expected Loss (PD × EAD × LGD); VaR 95%; Time Value of Money |
 | **Data Explorer** | Can I filter and export specific transactions? | Filterable node table with label and degree filters; degree distribution chart; CSV export |
 | **Auto-Discovery** | What fraud patterns should I worry about right now? | Proactively detects 5 fraud pattern types with severity badges and Plotly charts |
 | **Advanced ML** | Can the model explain why it flagged a transaction? | Optuna hyperparameter tuning + **Apply button to retrain with best params**; GAT + GraphSAGE ensemble; gradient-based attribution as horizontal bar chart (red = raises risk, blue = lowers) |
 | **Temporal Analysis** | Is fraud getting worse over time? | Class distribution with Ground Truth / AI-Predicted Labels toggle (results persist across toggle re-runs); velocity percentiles; z-score anomaly table; downloadable report |
-| **Knowledge Base** | Can I look up a fraud term or concept? | RAG search over 25 curated documents; ChromaDB + OpenAI with TF-IDF fallback; DuckDuckGo web search fallback (falls back to Google search link if library unavailable) |
+| **Knowledge Base** | Can I look up a fraud term or concept? | Search over 25 curated documents ranked by TF-IDF in the app (ChromaDB + OpenAI only when run locally with your own key); DuckDuckGo web search fallback (falls back to Google search link if library unavailable) |
 
-### Phase 6 — Advanced Quant Finance (Tabs 10–14)
+### Phase 6 — Advanced Quant Finance
 
-| Dashboard Tab | Business Question | What it does |
+| Analysis | Business Question | What it does |
 |--------------|-------------------|-------------|
 | **Stress Testing** | What if there's a financial crisis? | 5 named crisis scenarios (2008, COVID-19, Crypto Winter, etc.); Monte Carlo × 5,000 per scenario; severity ratio vs baseline; loss distribution overlay; KDE heatmap |
 | **Risk-Adjusted Metrics** | Is our fraud detector worth the investment? | Page-level **Finance User** / **Data Scientist** toggle. Finance view: Sharpe, Sortino, IR, Calmar (log-scale radar + TPR series + drawdown + interpretation). DS view: Mean/Std/Floor/vs-Benchmark metric cards + ML radar + TPR histogram + active return distribution. Ratios scale with √n_periods so Finance radar changes visibly with the slider. |
-| **Loss Forecasting** | How much should we budget for fraud? | Prophet (with Holt-Winters fallback) fraud-loss forecast over 49 bi-weekly steps (Jan 2011–Jan 2013); 80% confidence intervals; trend direction; per-period budget estimate |
+| **Loss Forecasting** | How much should we budget for fraud? | Prophet (with Holt-Winters fallback) fraud-loss forecast over 49 time steps about two weeks apart (the dataset publishes no dates; placeholder dates from 2011); 80% confidence intervals; trend direction; per-period budget estimate |
 | **Regulatory Capital** | How much money do we need in reserve? | Basel III Standardised Approach vs IRB Vasicek formula at 99.9% confidence; rho and PD sensitivity curves; SA vs IRB capital saving |
 | **Contagion Score** | If we miss one fraudster, how many others are at risk? | Stochastic SIR diffusion; Composite Risk = fraud_prob × (1 + log(1 + mean_at_risk)); ranked scatter; top investigation targets |
 
-### Phase 7 — RL Adaptive Threshold (Tab 15)
+### Phase 7 — RL Adaptive Threshold
 
-| Dashboard Tab | Business Question | What it does |
+| Analysis | Business Question | What it does |
 |--------------|-------------------|-------------|
 | **RL Threshold** | What fraud sensitivity should we set today? | LinUCB contextual bandit learns which probability threshold (τ ∈ {0.3, 0.5, 0.6, 0.7, 0.8}) minimises `FP_cost × FP_rate + FN_cost × FN_rate` given the temporal regime; trained on 49 Elliptic time steps with full-feedback offline updates; cumulative regret chart; arm selection pie; per-step threshold timeline; what-if predictor (5 sliders → recommended threshold + UCB score bar chart) |
 
 ### Business Translation Layer
 
-Every tab surfaces a green **Business Question** panel that frames the technical content as
+Every page opens with a **Business question** panel, and each analysis ends with a green one, that frames the technical content as
 a plain-English question and answer — no finance background required.
 
-Phase 6 tabs additionally show an amber **Plain English** callout after results are computed
+Phase 6 analyses additionally show an amber **Plain English** callout after results are computed
 (e.g. *"In a 2008-style crisis, your expected fraud losses would be 3.0× your baseline —
 from $X to $Y."*). All technical sliders (PD, LGD, rho, diffusion steps) include `help=`
 tooltip explanations.
@@ -316,7 +320,7 @@ print(response.json())
 - **Network structure:** Sparse directed graph, avg degree 2.3, 49 connected components
 - **Top hub node:** Node 2984918 with degree 473
 - **High-velocity nodes:** 13,752 nodes above the 90th percentile degree threshold
-- **Time range:** 49 bi-weekly snapshots (approx. Jan 2011 – Jan 2013)
+- **Time range:** 49 time steps about two weeks apart; the dataset publishes no calendar dates
 
 ## Data Source
 
